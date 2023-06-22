@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 
-from CBF_tools.gvf_traj import gvf_traj
+from CBF_tools.gvf_traj import *
 
 # ----------------------------------------------------------------------------
 # Todas los cálculos están vectorizados para poder realizarlos sobre N agentes
@@ -25,8 +25,6 @@ class gvf_ellipse(gvf_traj):
 
     # Variables para dibujar la trayectoria y el campo
     self.traj_points = self.param_points()
-    self.mapgrad_pos = [[]]
-    self.mapgrad_vec = [[]]
 
     # Phi hessian
     self.hess = np.zeros((2,2))
@@ -72,7 +70,7 @@ class gvf_ellipse(gvf_traj):
     pel = (self.mapgrad_pos - w) @ self.R
 
     n = self.grad_phi(self.mapgrad_pos)
-    t = s*n @ self.E.T
+    t = s*n @ E.T
 
     e = self.phi(self.mapgrad_pos)[:,None]
 

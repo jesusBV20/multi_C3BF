@@ -36,8 +36,11 @@ def draw(gvf_traj, fig=None, ax=None, xlim=None, ylim=None, draw_field=True):
     return fig, ax, field
 
 # ---------------
-# GVF_traj class
+# GVF_traj class ##TODO: Common methods here
 # ---------------
 class gvf_traj:
   def __init__(self):
-    self.E = np.array([[0, 1],[-1, 0]])
+    # Variables para dibujar la trayectoria y el campo
+    self.traj_points = [[]]
+    self.mapgrad_pos = [[]]
+    self.mapgrad_vec = [[]]
