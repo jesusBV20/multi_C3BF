@@ -176,7 +176,7 @@ class simulator:
 
             # Explicit solution of the QP problem
             if psi < 0:
-              psi_lgh_k.append(- psi / Lgh)
+              psi_lgh_k.append(psi / Lgh) # *(-1) because omega_theta
 
             # Volcamos los resultados sobre las variables de telemetría --
             self.p_rel[k,i] = prel
