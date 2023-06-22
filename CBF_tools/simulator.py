@@ -147,14 +147,14 @@ class simulator:
           v = self.vf[i]
           phi = self.phif[i]
 
-          prel = P[i,:] - P[k,:]
+          prel = P[k,:] - P[i,:]
           prel_sqr = np.dot(prel, prel)
           prel_norm = np.sqrt(prel_sqr)
 
           if prel_sqr > self.r**2: # Si no ha colisionado ...
             cos_alfa = np.sqrt(prel_sqr - self.r**2)/prel_norm
 
-            vrel = V[i,:] - V[k,:]
+            vrel = V[k,:] - V[i,:]
             vrel_norm = np.sqrt(np.dot(vrel, vrel))
             vrel_dot_g = v * np.array([-np.sin(phi), np.cos(phi)])
 
