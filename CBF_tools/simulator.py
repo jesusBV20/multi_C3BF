@@ -42,6 +42,8 @@ class simulator:
       self.w = np.zeros([n_agents])
       self.e = np.zeros([n_agents])
 
+      self.w_ref = np.zeros([n_agents])
+
       # Parámetros del robot
       self.L = 0.8                      # m
       self.delta_max = 15 * np.pi / 180 # rad
@@ -54,9 +56,6 @@ class simulator:
       self.r = 0.6
       self.gamma = 1
 
-      # Switch para seleccionar el tipo de algoritmo para evitar colisiones
-      self.cbf_sw = cbf_sw
-
       # Declaramos variables a monitorizar ---------------------
       self.p_rel = np.zeros([n_agents, n_agents, 2])
       self.v_rel = np.zeros([n_agents, n_agents, 2])
@@ -66,6 +65,7 @@ class simulator:
       self.psi = np.zeros([n_agents, n_agents])
 
       self.omega_safe = np.zeros([n_agents])
+
       # --------------------------------------------------------
 
     def set_params(self, s = None, ke = None, kn = None, r = None, gamma = None):
@@ -125,7 +125,7 @@ class simulator:
       return -omega
 
     def cbf_colAvoid(self):
-      omega = np.copy(self.w)
+      omega = np.copy(self.w_ref)
 
       # Inicializamos las variables de telemetría
       self.p_rel = np.zeros(self.p_rel.shape)
@@ -138,7 +138,7 @@ class simulator:
 
       # Mientras se satisfacen las siguientes condiciones
       for i in range(self.N):
-        omega_ref = self.w[i]
+        omega_ref = - self.w_ref[i]
         P = self.pf
         V = self.vf * np.array([np.cos(self.phif), np.sin(self.phif)]).T
 
@@ -147,42 +147,48 @@ class simulator:
           v = self.vf[i]
           phi = self.phif[i]
 
-          prel = P[k,:] - P[i,:]
+          prel = P[k,:] - P[i,:] # esto ta mal
           prel_sqr = np.dot(prel, prel)
           prel_norm = np.sqrt(prel_sqr)
 
           if prel_sqr > self.r**2: # Si no ha colisionado ...
             cos_alfa = np.sqrt(prel_sqr - self.r**2)/prel_norm
 
+            # v_rel
             vrel = V[k,:] - V[i,:]
             vrel_norm = np.sqrt(np.dot(vrel, vrel))
-            vrel_dot_g = v * np.array([-np.sin(phi), np.cos(phi)])
+
+            # \dot v_rel (The -w is SO IMPORTANT)
+            vrel_dot_1 = v * np.array([-np.sin(phi), np.cos(phi)])
+            vrel_dot_2 = self.vf[k] * np.array([np.sin(self.phif[k]), -np.cos(self.phif[k])])
+            vrel_dot_ref = vrel_dot_2 * (-self.w[k]) + vrel_dot_1 * (-self.w_ref[i])
+
 
             # h(x,t)
-            dot_rel = np.dot(prel, vrel) # TODO: plot this
+            dot_rel = np.dot(prel, vrel)
             h = dot_rel + prel_norm * vrel_norm * cos_alfa
 
-            # h_dot_r(x,t) = h_dot(x, u_ref(x,t))
-            vrel_dot_r = vrel_dot_g * omega_ref
-            h_dot_r = vrel_norm**2 + np.dot(prel, vrel_dot_r) + \
-                            np.dot(vrel, vrel_dot_r)*(cos_alfa*prel_norm)/vrel_norm + \
+            # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
+            h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
+                            np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
                             dot_rel*vrel_norm/(cos_alfa*prel_norm)
 
             # psi(x,t)
-            psi = h_dot_r + self.gamma * h
+            psi = h_dot_ref + self.gamma * h
 
             # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
-            Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_g)
+            Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
 
             # Explicit solution of the QP problem
-            if psi < 0:
-              psi_lgh_k.append(psi / Lgh) # *(-1) because omega_theta
+            if Lgh != 0:
+              if psi < 0:
+                psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
 
             # Volcamos los resultados sobre las variables de telemetría --
             self.p_rel[k,i] = prel
             self.v_rel[k,i] = vrel
             self.h[k,i] = h
-            self.h_dot[k,i] = h_dot_r
+            self.h_dot[k,i] = h_dot_ref
             self.kappa[k,i] = self.gamma * h
             self.psi[k,i] = psi
 
@@ -200,9 +206,11 @@ class simulator:
       return omega
 
     def int_euler(self):
-      self.w = self.gvf_control()
-      if self.cbf_sw:
-        self.w = self.cbf_colAvoid()
+      self.w_ref = self.gvf_control()
+      if self.t == self.t0:
+        self.w = self.w_ref
+      self.w = self.cbf_colAvoid()
+
       [p_dot, v_dot, phi_dot] = self.kinematics(self.pf, self.vf, self.phif, self.w)
       self.t = self.t + self.dt
       self.pf = self.pf + p_dot * self.dt
