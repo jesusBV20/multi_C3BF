@@ -56,7 +56,7 @@ def absmaxND(a):
 Función para dar formato a los plots de datos
 """
 def fmt_data_axis(ax, ylabel = "", xlabel = "", title = "",
-                  xlim = None, ylim = None, d=2):
+                  xlim = None, ylim = None, invy = True, d=2):
   ax.set_xlabel(xlabel)
   ax.set_ylabel(ylabel)
   ax.set_title(title)
@@ -66,8 +66,10 @@ def fmt_data_axis(ax, ylabel = "", xlabel = "", title = "",
   if ylim is not None:
     ax.set_ylim(ylim)
 
+  if invy:
+    ax.yaxis.tick_right()
+    
   ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.{}f'.format(d)))
-  ax.yaxis.tick_right()
   ax.grid(True)
 
 """
