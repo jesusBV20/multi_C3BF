@@ -24,13 +24,18 @@ def rover_kinematics(P, v, phi, w, m=1, f=[0,1,0]):
 # - w es un vector   N x 1
 
 class simulator:
-    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, cbf_sw = False, kinematics=rover_kinematics):
+    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, kinematics=rover_kinematics):
       self.traj = gvf_traj         # Trayectoria a seguir por los agentes
       self.kinematics = kinematics # Dinámica de los robots
       self.N = n_agents            # Número de agentes simulados
       self.t0 = x0[0]              # Tiempo inicial de la simulación (s)
       self.t  = x0[0]              # Tiempo actual de la simulación (s)
       self.dt = dt                 # Pasos temporales en la simulación (s)
+
+      if t_cbf is None:
+        self.t_cbf = self.t0
+      else:
+        self.t_cbf = t_cbf
 
       # Vectores de estados (fila -> agente)
       self.p0 = x0[1]    # Matriz N x 2 de posiciones iniciales
@@ -138,7 +143,6 @@ class simulator:
 
       # Mientras se satisfacen las siguientes condiciones
       for i in range(self.N):
-        omega_ref = - self.w_ref[i]
         P = self.pf
         V = self.vf * np.array([np.cos(self.phif), np.sin(self.phif)]).T
 
@@ -180,7 +184,8 @@ class simulator:
             Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
 
             # Explicit solution of the QP problem
-            if Lgh != 0:
+            delta = 0.01
+            if abs(Lgh) > delta:
               if psi < 0:
                 psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
 
@@ -207,9 +212,10 @@ class simulator:
 
     def int_euler(self):
       self.w_ref = self.gvf_control()
-      if self.t == self.t0:
+      if self.t <= self.t_cbf:
         self.w = self.w_ref
-      self.w = self.cbf_colAvoid()
+      else:
+        self.w = self.cbf_colAvoid()
 
       [p_dot, v_dot, phi_dot] = self.kinematics(self.pf, self.vf, self.phif, self.w)
       self.t = self.t + self.dt
