@@ -178,13 +178,13 @@ class simulator:
                             dot_rel*vrel_norm/(cos_alfa*prel_norm)
 
             # psi(x,t)
-            psi = h_dot_ref + self.gamma * h
+            psi = h_dot_ref + self.gamma * h**3
 
             # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
             Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
 
             # Explicit solution of the QP problem
-            delta = 0.01
+            delta = 0.1
             if abs(Lgh) > delta:
               if psi < 0:
                 psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
@@ -207,7 +207,7 @@ class simulator:
           omega[i] += self.omega_safe[i]
 
       # Clip the response of the controller by the mechanical saturation value
-      omega = self.omega_clip(omega)
+      #omega = self.omega_clip(omega)
       return omega
 
     def int_euler(self):
