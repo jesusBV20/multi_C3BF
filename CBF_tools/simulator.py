@@ -178,7 +178,8 @@ class simulator:
                             dot_rel*vrel_norm/(cos_alfa*prel_norm)
 
             # psi(x,t)
-            psi = h_dot_ref + self.gamma * h**3
+            psi = h_dot_ref + self.gamma * h ** 3
+            
 
             # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
             Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
