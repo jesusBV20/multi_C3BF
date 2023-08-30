@@ -24,7 +24,7 @@ def rover_kinematics(P, v, phi, w, m=1, f=[0,1,0]):
 # - w es un vector   N x 1
 
 class simulator:
-    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, A = None, kinematics=rover_kinematics):
+    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, A = None, A_dot = None, kinematics=rover_kinematics):
       self.traj = gvf_traj         # Trayectoria a seguir por los agentes
       self.kinematics = kinematics # Dinámica de los robots
       self.N = n_agents            # Número de agentes simulados
@@ -62,8 +62,10 @@ class simulator:
       self.gamma = 1
 
       self.A = lambda p_norm: np.array([[1,0],[0,1]])
-      if A is not None:
+      self.A_dot = lambda p_norm: np.array([[0,0],[0,0]])
+      if A is not None and A_dot is not None: 
         self.A = A
+        self.A_dot = A_dot
 
       # Declaramos variables a monitorizar ---------------------
       self.p_rel = np.zeros([n_agents, n_agents, 2])
@@ -149,59 +151,66 @@ class simulator:
       for i in range(self.N):
         P = self.pf
         V = self.vf * np.array([np.cos(self.phif), np.sin(self.phif)]).T
+        v = self.vf[i]
+        phi = self.phif[i]
 
         psi_lgh_k = []
         for k in [k for k in range(self.N) if k!=i]:
-          v = self.vf[i]
-          phi = self.phif[i]
-
-          prel = P[k,:] - P[i,:] # esto ta mal
-          prel_sqr = np.dot(prel, prel)
-          prel_norm = np.sqrt(prel_sqr)
-          prel_A = prel.T@self.A(prel_norm)@prel
-
-          if prel_A > self.r**2: # Si no ha colisionado ...
-            cos_alfa = np.sqrt(prel_A - self.r**2)/prel_norm
-
-            # v_rel
-            vrel = V[k,:] - V[i,:]
-            vrel_norm = np.sqrt(np.dot(vrel, vrel))
-
-            # \dot v_rel (The -w is SO IMPORTANT)
-            vrel_dot_1 = v * np.array([-np.sin(phi), np.cos(phi)])
-            vrel_dot_2 = self.vf[k] * np.array([np.sin(self.phif[k]), -np.cos(self.phif[k])])
-            vrel_dot_ref = vrel_dot_2 * (-self.w[k]) + vrel_dot_1 * (-self.w_ref[i])
-
-
-            # h(x,t)
-            dot_rel = np.dot(prel, vrel)
-            h = dot_rel + prel_norm * vrel_norm * cos_alfa
-
-            # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
-            h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
-                            np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
-                            dot_rel*vrel_norm/(cos_alfa*prel_norm)
-
-            # psi(x,t)
-            psi = h_dot_ref + self.gamma * h ** 3
+          if self.vf[k] < v:
+            phi_k = self.phif[k]
+            R_k = np.array([[np.cos(phi_k), - np.sin(phi_k)],
+                            [np.sin(phi_k), np.cos(phi_k)]])
             
+            prel = P[k,:] - P[i,:] # esto ta mal
+            prel_sqr = np.dot(prel, prel)
+            prel_norm = np.sqrt(prel_sqr)
+  
+            prel_A = prel.T@R_k.T@self.A(prel_norm)@R_k@prel
+            if prel_A > self.r**2: # Si no ha colisionado ...
+              cos_alfa = np.sqrt(prel_A - self.r**2)/prel_norm
 
-            # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
-            Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
+              # v_rel
+              vrel = V[k,:] - V[i,:]
+              vrel_norm = np.sqrt(np.dot(vrel, vrel))
 
-            # Explicit solution of the QP problem
-            delta = 0.1
-            if abs(Lgh) > delta:
-              if psi < 0:
-                psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
+              # \dot v_rel (The -w is SO IMPORTANT)
+              vrel_dot_1 = v * np.array([-np.sin(phi), np.cos(phi)])
+              vrel_dot_2 = self.vf[k] * np.array([np.sin(phi_k), -np.cos(phi_k)])
+              vrel_dot_ref = vrel_dot_2 * (-self.w[k]) + vrel_dot_1 * (-self.w_ref[i])
 
-            # Volcamos los resultados sobre las variables de telemetría --
-            self.p_rel[k,i] = prel
-            self.v_rel[k,i] = vrel
-            self.h[k,i] = h
-            self.h_dot[k,i] = h_dot_ref
-            self.kappa[k,i] = self.gamma * h
-            self.psi[k,i] = psi
+
+              # h(x,t)
+              dot_rel = np.dot(prel, vrel)
+              h = dot_rel + prel_norm * vrel_norm * cos_alfa
+
+              # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
+              prel_dot_A = prel.T@R_k.T@self.A(prel_norm)@R_k@vrel
+              prel_A_dot = prel.T@R_k.T@self.A_dot(prel_norm)@R_k@prel
+
+              h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
+                              np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
+                              vrel_norm* (2*prel_dot_A + prel_A_dot)/(2*cos_alfa*prel_norm)
+
+              # psi(x,t)
+              psi = h_dot_ref + self.gamma * h ** 3
+              
+
+              # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
+              Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
+
+              # Explicit solution of the QP problem
+              delta = 0.1
+              if abs(Lgh) > delta:
+                if psi < 0:
+                  psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
+
+              # Volcamos los resultados sobre las variables de telemetría --
+              self.p_rel[k,i] = prel
+              self.v_rel[k,i] = vrel
+              self.h[k,i] = h
+              self.h_dot[k,i] = h_dot_ref
+              self.kappa[k,i] = self.gamma * h
+              self.psi[k,i] = psi
 
             # ------------------------------------------------------------
 
