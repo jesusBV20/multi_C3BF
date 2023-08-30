@@ -24,7 +24,7 @@ def rover_kinematics(P, v, phi, w, m=1, f=[0,1,0]):
 # - w es un vector   N x 1
 
 class simulator:
-    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, kinematics=rover_kinematics):
+    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, A = None, kinematics=rover_kinematics):
       self.traj = gvf_traj         # Trayectoria a seguir por los agentes
       self.kinematics = kinematics # Dinámica de los robots
       self.N = n_agents            # Número de agentes simulados
@@ -60,6 +60,10 @@ class simulator:
 
       self.r = 0.6
       self.gamma = 1
+
+      self.A = lambda p_norm: np.array([[1,0],[0,1]])
+      if A is not None:
+        self.A = A
 
       # Declaramos variables a monitorizar ---------------------
       self.p_rel = np.zeros([n_agents, n_agents, 2])
@@ -154,9 +158,10 @@ class simulator:
           prel = P[k,:] - P[i,:] # esto ta mal
           prel_sqr = np.dot(prel, prel)
           prel_norm = np.sqrt(prel_sqr)
+          prel_A = prel.T@self.A(prel_norm)@prel
 
-          if prel_sqr > self.r**2: # Si no ha colisionado ...
-            cos_alfa = np.sqrt(prel_sqr - self.r**2)/prel_norm
+          if prel_A > self.r**2: # Si no ha colisionado ...
+            cos_alfa = np.sqrt(prel_A - self.r**2)/prel_norm
 
             # v_rel
             vrel = V[k,:] - V[i,:]
