@@ -175,14 +175,14 @@ class simulator:
               vrel_norm = np.sqrt(np.dot(vrel, vrel))
 
               # \dot v_rel (The -w is SO IMPORTANT)
-              vrel_dot_1 = v * np.array([-np.sin(phi), np.cos(phi)])
-              vrel_dot_2 = self.vf[k] * np.array([np.sin(self.phif[k]), -np.cos(self.phif[k])])
-              vrel_dot_ref = vrel_dot_2 * (-self.w[k]) + vrel_dot_1 * (-self.w_ref[i])
+              vrel_dot_1 = v * np.array([np.sin(phi), -np.cos(phi)])
+              vrel_dot_2 = self.vf[k] * np.array([-np.sin(self.phif[k]), np.cos(self.phif[k])])
+              vrel_dot_ref = vrel_dot_2 * (self.w[k]) + vrel_dot_1 * (self.w_ref[i])
 
               # Derivative of terms involving A
               prel_dot_B_R = prel.T@R_i.T@self.B(prel)@R_i@vrel
               prel_B_dot_R = prel.T@R_i.T@self.B_dot(prel,vrel)@R_i@prel
-              prel_B_R_dot = prel.T@R_i.T@self.B(prel)@R_i_dot@prel * (-self.w_ref[i])
+              prel_B_R_dot = prel.T@(R_i.T@self.B(prel)@R_i_dot + R_i_dot.T@self.B(prel)@R_i)@prel * (self.w_ref[i])
 
               # h(x,t)
               dot_rel = np.dot(prel, vrel)
@@ -191,21 +191,22 @@ class simulator:
               # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
               h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
                               np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
-                              vrel_norm* (2*prel_dot_B_R + 2*prel_B_R_dot + prel_B_dot_R)/(2*cos_alfa*prel_norm)
+                              vrel_norm* (2*prel_dot_B_R + prel_B_R_dot + prel_B_dot_R)/(2*cos_alfa*prel_norm)
 
               # psi(x,t)
               psi = h_dot_ref + self.gamma * h ** 3
               
 
               # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
-              Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1) - \
-                    vrel_norm / (cos_alfa*prel_norm) * prel_B_R_dot / (-self.w_ref[i])
+              Lgh = - vrel_norm / (2*cos_alfa*prel_norm) * prel_B_R_dot / (self.w_ref[i]) +\
+                      np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
+                    
 
               # Explicit solution of the QP problem
               delta = 0.1
               if abs(Lgh) > delta:
                 if psi < 0:
-                  psi_lgh_k.append(psi / Lgh) # This *(-) is SO IMPORTANT
+                  psi_lgh_k.append(- psi / Lgh) # This *(-) is SO IMPORTANT
 
               # Volcamos los resultados sobre las variables de telemetría --
               self.p_rel[k,i] = prel
