@@ -40,7 +40,7 @@ class gvf_ellipse(gvf_traj):
                       - self.b * np.sin(-self.alpha) * np.sin(t)
     y = self.XYoff[1] + self.a * np.sin(-self.alpha) * np.cos(t) \
                       + self.b * np.cos(-self.alpha) * np.sin(t)
-    return (x, y)
+    return [x, y]
 
   # Phi
   def phi(self, p):

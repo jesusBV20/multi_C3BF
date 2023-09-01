@@ -24,7 +24,7 @@ def rover_kinematics(P, v, phi, w, m=1, f=[0,1,0]):
 # - w es un vector   N x 1
 
 class simulator:
-    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, B = None, B_dot = None, kinematics=rover_kinematics):
+    def __init__(self, gvf_traj, n_agents, x0, dt = 0.01, t_cbf = None, rho = None, rho_dot = None, kinematics=rover_kinematics):
       self.traj = gvf_traj         # Trayectoria a seguir por los agentes
       self.kinematics = kinematics # Dinámica de los robots
       self.N = n_agents            # Número de agentes simulados
@@ -61,11 +61,11 @@ class simulator:
       self.r = 0.6
       self.gamma = 1
 
-      self.B = lambda prel: np.array([[1,0],[0,1]])
-      self.B_dot = lambda prel, vrel: np.array([[0,0],[0,0]])
-      if B is not None and B_dot is not None: 
-        self.B = B
-        self.B_dot = B_dot
+      self.rho = lambda prel: self.r
+      self.rho_dot = lambda prel, vrel: 0
+      if rho is not None and rho_dot is not None: 
+        self.rho = rho
+        self.rho_dot = rho_dot
 
       # Declaramos variables a monitorizar ---------------------
       self.p_rel = np.zeros([n_agents, n_agents, 2])
@@ -154,10 +154,6 @@ class simulator:
 
         v = self.vf[i]
         phi = self.phif[i]
-        R_i = np.array([[np.cos(phi), - np.sin(phi)],
-                        [np.sin(phi),   np.cos(phi)]])
-        R_i_dot = np.array([[- np.sin(phi), - np.cos(phi)],
-                            [  np.cos(phi), - np.sin(phi)]])
         
         psi_lgh_k = []
         for k in [k for k in range(self.N) if k!=i]:
@@ -165,10 +161,10 @@ class simulator:
             prel = P[k,:] - P[i,:] # esto ta mal
             prel_sqr = np.dot(prel, prel)
             prel_norm = np.sqrt(prel_sqr)
-  
-            prel_A = prel.T@R_i.T@self.B(prel)@R_i@prel
-            if prel_A > self.r**2: # Si no ha colisionado ...
-              cos_alfa = np.sqrt(prel_A - self.r**2)/prel_norm
+
+            phik = self.phif[k]
+            if prel_norm > self.rho(prel): # Si no han colisionado ...
+              cos_alfa = np.sqrt(prel_norm**2 - self.rho(prel)**2)/prel_norm
 
               # v_rel
               vrel = V[k,:] - V[i,:]
@@ -176,13 +172,11 @@ class simulator:
 
               # \dot v_rel (The -w is SO IMPORTANT)
               vrel_dot_1 = v * np.array([np.sin(phi), -np.cos(phi)])
-              vrel_dot_2 = self.vf[k] * np.array([-np.sin(self.phif[k]), np.cos(self.phif[k])])
+              vrel_dot_2 = self.vf[k] * np.array([-np.sin(phik), np.cos(phik)])
               vrel_dot_ref = vrel_dot_2 * (self.w[k]) + vrel_dot_1 * (self.w_ref[i])
 
               # Derivative of terms involving A
-              prel_dot_B_R = prel.T@R_i.T@self.B(prel)@R_i@vrel
-              prel_B_dot_R = prel.T@R_i.T@self.B_dot(prel,vrel)@R_i@prel
-              prel_B_R_dot = prel.T@(R_i.T@self.B(prel)@R_i_dot + R_i_dot.T@self.B(prel)@R_i)@prel * (self.w_ref[i])
+              rho_rho_dot = self.rho(prel) * self.rho_dot(prel, vrel)
 
               # h(x,t)
               dot_rel = np.dot(prel, vrel)
@@ -191,15 +185,14 @@ class simulator:
               # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
               h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
                               np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
-                              vrel_norm* (2*prel_dot_B_R + prel_B_R_dot + prel_B_dot_R)/(2*cos_alfa*prel_norm)
+                              vrel_norm* (dot_rel - rho_rho_dot)/(cos_alfa*prel_norm)
 
               # psi(x,t)
               psi = h_dot_ref + self.gamma * h ** 3
-              
 
               # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
-              Lgh = - vrel_norm / (2*cos_alfa*prel_norm) * prel_B_R_dot / (self.w_ref[i]) +\
-                      np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)
+              Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1) \
+                      
                     
 
               # Explicit solution of the QP problem
