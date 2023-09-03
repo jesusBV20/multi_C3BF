@@ -33,7 +33,10 @@ from .gvf_traj.gvf_traj  import draw
 E = np.array([[0, 1],[-1, 0]])
 
 COLOR_RBT = color_palette()[0]
-COLOR_OBS = "red"
+COLOR_OBS = color_palette()[3]
+
+WDATA_LIMS = [-3,3]
+PDATA_LIMS = [0,10]
 
 """\
 ###########
@@ -73,23 +76,32 @@ class sim_1:
     phi0 = np.arctan2(t[:,1],t[:,0])
 
     # Initial state of the obstacles
-    p0[0,:] = np.array([-20,-20])
+    p0[0,:] = np.array([20,-20])
     p0[1,:] = np.array([-20,12])
-    v0[0] = 0.25
-    v0[1] = 3.9
 
-    phi0[0] = 0
-    t = -self.s*self.gvf_traj.grad_phi(p0[1,:][:,None].T)@E.T
-    phi0[1] = np.arctan2(t[0,1],t[0,0])
+    v0[0:2] = 0
+    v0_obs = np.array([4,4])
+    
+    t = -self.s*self.gvf_traj.grad_phi(p0[0:2,:])@E.T
+    phi0[0:2] = np.arctan2(t[:,1],t[:,0])
 
     # Initial state vector
     x0 = [p0, v0, phi0]
+    x0_obs = [p0[0:2,:], v0_obs, phi0[0:2]]
 
-    # Simulator init
+    # -------------------------------------------------
+
+    # Robots simulator init
     self.sim = simulator(self.gvf_traj, n_agents, x0, self.dt, t_cbf=t_cbf, 
-                         rho=rho, rho_dot=rho_dot, obs=obs_list)
+                         rho=rho, rho_dot=rho_dot, obs=self.obs_list)
     self.sim.set_params(s, ke, kn, r, gamma)
 
+    # Obstacles simulator init
+    self.sim_obs = simulator(self.gvf_traj, 2, x0_obs, self.dt, t_cbf=t_cbf, 
+                      rho=rho, rho_dot=rho_dot)
+    self.sim_obs.set_params(0, 0, 0, 0, 0)
+
+    # -------------------------------------------------
     # Generating vector field
     self.gvf_traj.vector_field(XYoff, area, s, ke)
 
@@ -98,6 +110,7 @@ class sim_1:
   """
   def numerical_simulation(self):
     its = int(self.tf/self.dt)
+    n_obs = self.sim_obs.N
 
     pfdata   = np.empty([its,self.sim.N, 2])
     phidata  = np.empty([its,self.sim.N])
@@ -105,15 +118,28 @@ class sim_1:
     omega    = np.empty([its,self.sim.N])
 
     for i in tqdm(range(its)):
-      # Robots sim data
-      pfdata[i,:,:] = self.sim.pf
-      phidata[i,:]  = self.sim.phif
-      omega[i,:]    = self.sim.w
-      preldata[i,:,:,:] = self.sim.p_rel
+      # Obstacle sim data
+      pfdata[i,0:n_obs,:] = self.sim_obs.pf
+      phidata[i,0:n_obs]  = self.sim_obs.phif
+      omega[i,0:n_obs]    = self.sim_obs.w
 
-      # Simulator euler step integration
-      t = -self.s*self.gvf_traj.grad_phi(self.sim.pf[1,:][:,None].T)@E.T
-      self.sim.phif[1] = np.arctan2(t[0,1],t[0,0])
+      self.sim.pf[0:n_obs,:] = self.sim_obs.pf
+      self.sim.phif[0:n_obs] = self.sim_obs.phif
+      self.sim.w[0:n_obs]    = self.sim_obs.w
+
+      # Obstacles simulator euler step integration
+      t = -self.s*self.gvf_traj.grad_phi(self.sim_obs.pf)@E.T
+      self.sim_obs.phif = np.arctan2(t[:,1],t[:,0])
+      self.sim_obs.int_euler()
+
+      # ---
+      # Robots sim data
+      pfdata[i,n_obs:,:] = self.sim.pf[n_obs:,:]
+      phidata[i,n_obs:]  = self.sim.phif[n_obs:]
+      omega[i,n_obs:]    = self.sim.w[n_obs:]
+      preldata[i,:,:,:]  = self.sim.p_rel
+
+      # Robots simulator euler step integration
       self.sim.int_euler()
 
     # List to numpy arrays for easier indexing
@@ -151,8 +177,8 @@ class sim_1:
     main_ax.set_xlabel(r"$p_x$ (L)")
     main_ax.grid(True)
 
-    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=[0,5])
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=[-2,2])
+    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
+    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
 
     # -- Main axis plotting
     draw(self.gvf_traj, fig, main_ax)
@@ -198,7 +224,7 @@ class sim_1:
             if k not in self.obs_list:
               prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=3)
           else:
-            prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.3, zorder=2)
+            prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
 
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))
@@ -272,8 +298,8 @@ class sim_1:
     self.anim_axis.set_xlabel(r"$p_x$ (L)")
     self.anim_axis.grid(True)
 
-    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=[0,5])
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=[-2,2])
+    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
+    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
 
     # -- Main axis plotting
     draw(self.gvf_traj, fig, self.anim_axis)
@@ -326,9 +352,9 @@ class sim_1:
       for k in range(self.sim.N):
         if k > n:
           if n in self.obs_list:
-            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_OBS, lw=1.2, alpha=0.4, zorder=3)
+            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=3)
           else:
-            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_RBT, lw=1.2, alpha=0.3, zorder=2)
+            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
 
     self.pline = prel_ax.axvline(0, c="black", ls="--", lw=1.2)
     self.wline = wdata_ax.axvline(0, c="black", ls="--", lw=1.2)

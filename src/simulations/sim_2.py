@@ -65,7 +65,7 @@ class sim_2:
     # -- Initial state --
 
     # Initial states of the robots
-    p0_rbt = np.array(self.gvf_traj.param_points(pts=n_agents-n_obs)).T*2
+    p0_rbt = np.array(self.gvf_traj.param_points(pts=n_agents-n_obs)).T*3.5
     p0_obs = np.array(self.gvf_traj.param_points(pts=n_obs)).T*1.2
     #p0 = 2*(np.random.rand(n_agents, 2)-0.5) * 30
     p0 = np.vstack([p0_obs,p0_rbt])
@@ -85,7 +85,6 @@ class sim_2:
     x0_obs = [p0_obs, v0[0:n_obs], phi0_obs]
     
     # -------------------------------------------------
-
     # Robots simulator init
     self.sim = simulator(self.gvf_traj, n_agents, x0, self.dt, t_cbf=t_cbf, 
                          rho=rho, rho_dot=rho_dot, obs=self.obs_list)
@@ -96,8 +95,10 @@ class sim_2:
                       rho=rho, rho_dot=rho_dot)
     self.sim_obs.set_params(-s, ke, kn, r, gamma)
 
+    # -------------------------------------------------
     # Generating vector field
     self.gvf_traj.vector_field(XYoff, area, s, ke)
+
 
   """\
   Function to launch the numerical simulation
@@ -134,13 +135,12 @@ class sim_2:
       # Robots simulator euler step integration
       self.sim.int_euler()
 
-
-
     # List to numpy arrays for easier indexing
     self.data["pf"] = pfdata
     self.data["phif"] = phidata
     self.data["prelnorm"] = np.linalg.norm(preldata, axis=3)
     self.data["omega"] = omega
+
 
   """\
   Function to generate the summary graphical plot of the whole simulation
