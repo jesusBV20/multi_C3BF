@@ -19,15 +19,15 @@ E = np.array([[0, 1],[-1, 0]])
 """
 Función para dibujar el campo vectorial y la trayectoria.
 """
-def draw(gvf_traj, fig=None, ax=None, xlim=None, ylim=None, draw_field=True):
+def draw(gvf_ell, fig=None, ax=None, xlim=None, ylim=None, draw_field=True, alpha=0.2):
   if fig == None:
     fig = plt.figure(dpi=100)
     ax = fig.subplots()
   elif ax == None:
     ax = fig.subplots()
 
-  ax.plot(gvf_traj.XYoff[0], gvf_traj.XYoff[1], "+k", zorder=0)
-  ax.plot(gvf_traj.traj_points[0], gvf_traj.traj_points[1], "k--", zorder=0)
+  ax.plot(gvf_ell.XYoff[0], gvf_ell.XYoff[1], "+k", zorder=0)
+  ax.plot(gvf_ell.traj_points[0], gvf_ell.traj_points[1], "k--", zorder=0)
 
   if xlim:
     ax.set_xlim(xlim)
@@ -35,9 +35,9 @@ def draw(gvf_traj, fig=None, ax=None, xlim=None, ylim=None, draw_field=True):
     ax.set_ylim(ylim)
 
   if draw_field:
-    field = ax.quiver(gvf_traj.mapgrad_pos[:,0], gvf_traj.mapgrad_pos[:,1], \
-                      gvf_traj.mapgrad_vec[:,0], gvf_traj.mapgrad_vec[:,1], \
-                      alpha=0.5)
+    field = ax.quiver(gvf_ell.mapgrad_pos[:,0], gvf_ell.mapgrad_pos[:,1], \
+                      gvf_ell.mapgrad_vec[:,0], gvf_ell.mapgrad_vec[:,1], \
+                      alpha=alpha)
     return fig, ax, field
 
 # ---------------

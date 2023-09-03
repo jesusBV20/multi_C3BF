@@ -98,27 +98,3 @@ class gvf_ellipse(gvf_traj):
 
 # ----------------------------------------------------------------------------
 
-"""
-Función para dibujar el campo vectorial y la trayectoria.
-"""
-def draw(gvf_ell, fig=None, ax=None, xlim=None, ylim=None, draw_field=True):
-  if fig == None:
-    fig = plt.figure(dpi=100)
-    ax = fig.subplots()
-  elif ax == None:
-    ax = fig.subplots()
-
-  ax.plot(gvf_ell.XYoff[0], gvf_ell.XYoff[1], "+k", zorder=0)
-  ax.plot(gvf_ell.traj_points[0], gvf_ell.traj_points[1], "k--", zorder=0)
-
-  if xlim:
-    ax.set_xlim(xlim)
-  if ylim:
-    ax.set_ylim(ylim)
-
-  if draw_field:
-    field = ax.quiver(gvf_ell.mapgrad_pos[:,0], gvf_ell.mapgrad_pos[:,1], \
-                      gvf_ell.mapgrad_vec[:,0], gvf_ell.mapgrad_vec[:,1], \
-                      alpha=0.5)
-    return fig, ax, field
-

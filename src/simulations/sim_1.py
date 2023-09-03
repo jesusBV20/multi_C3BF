@@ -23,20 +23,24 @@ from IPython.display import HTML
 
 # CBF_tools
 from .utils.toolbox import unicycle_patch, fmt_data_axis
-from .utils.simulator_v2 import simulator
+from .utils.simulator import simulator
 
 # GVF trajectories
-from .gvf_traj.gvf_traj_ellipse  import gvf_ellipse, draw
+from .gvf_traj.gvf_traj_ellipse  import gvf_ellipse
+from .gvf_traj.gvf_traj  import draw
 
 # -- Global variables --
 E = np.array([[0, 1],[-1, 0]])
+
+COLOR_RBT = color_palette()[0]
+COLOR_OBS = "red"
 
 """\
 ###########
 """
 class sim_1:
   def __init__(self, n_agents=12, tf=100, dt=1/60, a=20, b=12, area=120**2,
-                     s=1, ke=1.5, kn=2, r=0.5, gamma=1, d=1/3.5, t_cbf=10):
+                     s=1, ke=1.5, kn=2, r=0.5, gamma=1, d=1/3.5, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
     self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None}
@@ -61,9 +65,12 @@ class sim_1:
     # -- Initial state --
 
     # Initial states of the robots
-    p0 = 2*(np.random.rand(n_agents, 2)-0.5) * 30
+    #p0 = 2*(np.random.rand(n_agents, 2)-0.5) * 30
+    p0 = np.array(self.gvf_traj.param_points(pts=n_agents)).T*3.5
     v0 = np.random.rand(n_agents,1) * 6 + 4
-    phi0 = 2*(np.random.rand(n_agents) - 0.5) * (np.pi)
+
+    t = self.s*self.gvf_traj.grad_phi(p0)@E.T
+    phi0 = np.arctan2(t[:,1],t[:,0])
 
     # Initial state of the obstacles
     p0[0,:] = np.array([-20,-20])
@@ -90,18 +97,19 @@ class sim_1:
   Function to launch the numerical simulation
   """
   def numerical_simulation(self):
-    pfdata = []
-    phidata = []
-    preldata = []
-    omega = []
+    its = int(self.tf/self.dt)
 
-    for i in tqdm(range(int(self.tf/self.dt))):
-      if i != 0:
-        pfdata.append(self.sim.pf)
-        phidata.append(self.sim.phif)
+    pfdata   = np.empty([its,self.sim.N, 2])
+    phidata  = np.empty([its,self.sim.N])
+    preldata = np.empty([its,self.sim.N,self.sim.N,2])
+    omega    = np.empty([its,self.sim.N])
 
-        preldata.append(self.sim.p_rel)
-        omega.append(self.sim.w)
+    for i in tqdm(range(its)):
+      # Robots sim data
+      pfdata[i,:,:] = self.sim.pf
+      phidata[i,:]  = self.sim.phif
+      omega[i,:]    = self.sim.w
+      preldata[i,:,:,:] = self.sim.p_rel
 
       # Simulator euler step integration
       t = -self.s*self.gvf_traj.grad_phi(self.sim.pf[1,:][:,None].T)@E.T
@@ -109,10 +117,10 @@ class sim_1:
       self.sim.int_euler()
 
     # List to numpy arrays for easier indexing
-    self.data["pf"] = np.array(pfdata)
-    self.data["phif"] = np.array(phidata)
-    self.data["prelnorm"] = np.linalg.norm(np.array(preldata), axis=3)
-    self.data["omega"] = np.array(omega)
+    self.data["pf"] = pfdata
+    self.data["phif"] = phidata
+    self.data["prelnorm"] = np.linalg.norm(preldata, axis=3)
+    self.data["omega"] = omega
 
   """\
   Function to generate the summary graphical plot of the whole simulation
@@ -156,7 +164,7 @@ class sim_1:
     for n in range(self.sim.N):
 
       if n not in self.obs_list:  # Agent icons
-        color = color_palette()[0]
+        color = COLOR_RBT
         icon_init = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], color, size=1)
         icon_init.set_alpha(0.3)
         icon = unicycle_patch([xdata[li,n], ydata[li,n]], phidata[li,n], color, size=1)
@@ -167,30 +175,30 @@ class sim_1:
 
       
       else: # Obstacle icons
-        icon = unicycle_patch([xdata[li,n], ydata[li,n]], phidata[li,n], "r", size=2)
+        icon = unicycle_patch([xdata[li,n], ydata[li,n]], phidata[li,n], COLOR_OBS, size=2)
         icon_col = patches.Circle([xdata[li,n], ydata[li,n]], self.rc, alpha=0.5, fill=True,
-                                  color="r", ls="-", lw=0)
+                                  color=COLOR_OBS, ls="-", lw=0)
         main_ax.add_patch(icon)
         main_ax.add_patch(icon_col)
 
     # -- Data axis plotting
-    time_vec = np.linspace(0, self.tf/1000, int(self.tf/self.dt)-1)
+    time_vec = np.linspace(0, self.tf/1000, int(self.tf/self.dt))
 
     # Zero lines
-    prel_ax.axhline(self.rc, c="r", ls="--", lw=1.4, zorder=0, alpha=1)
+    prel_ax.axhline(self.rc, c=COLOR_OBS, ls="--", lw=1.4, zorder=0, alpha=1)
     prel_ax.axhline(self.r,  c="b", ls="--", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axhline(0, c="k", ls="--", lw=1.2, zorder=0, alpha=0.5)
 
     # Plotting data
     for n in range(self.sim.N):
-      wdata_ax.plot(time_vec, omega[:,n], c=color_palette()[0], lw=1.2, alpha=0.2)
+      wdata_ax.plot(time_vec, omega[:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
       for k in range(self.sim.N):
         if k > n:
           if n in self.obs_list:
             if k not in self.obs_list:
-              prel_ax.plot(time_vec, preldata[:,k,n], c="r", lw=1.2, alpha=0.2, zorder=3)
+              prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=3)
           else:
-            prel_ax.plot(time_vec, preldata[:,k,n], c=color_palette()[0], lw=1.2, alpha=0.3, zorder=2)
+            prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.3, zorder=2)
 
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))
@@ -199,15 +207,15 @@ class sim_1:
   """\
   Animation function update
   """
-  def animate(self, i, xdata, ydata, phidata, c_palet, n_tail):
+  def animate(self, i, xdata, ydata, phidata, n_tail):
     for n in range(self.sim.N):
       self.icons_plt[n].remove()
       if n not in self.obs_list:
-        self.icons_plt[n] = unicycle_patch([xdata[i,n], ydata[i,n]], phidata[i,n], c_palet[0])
+        self.icons_plt[n] = unicycle_patch([xdata[i,n], ydata[i,n]], phidata[i,n], COLOR_RBT, size=1)
         self.icons_plt[n].set_zorder(3)
 
       else:
-        self.icons_plt[n] = unicycle_patch([xdata[i,n], ydata[i,n]], phidata[i,n], "k", size=2)
+        self.icons_plt[n] = unicycle_patch([xdata[i,n], ydata[i,n]], phidata[i,n], "k", size=1)
         self.icons_plt[n].set_zorder(3)
 
         n_ = np.where(np.array(self.obs_list) == n)[0][0]
@@ -221,8 +229,8 @@ class sim_1:
       else:
         self.lines_plt[n].set_data(xdata[0:i,n], ydata[0:i,n])
 
-    self.pline.set_xdata(i*self.dt)
-    self.wline.set_xdata(i*self.dt)
+    self.pline.set_xdata(i*self.dt/1000)
+    self.wline.set_xdata(i*self.dt/1000)
 
   
   """\
@@ -274,27 +282,26 @@ class sim_1:
     self.icons_plt = []
     self.icons_col_plt = []
 
-    c_palet = color_palette()
     for n in range(self.sim.N):
-      icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], c_palet[0])
+      icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_RBT)
 
     # Draw unicycle icons
     for n in range(self.sim.N):
       
       if n not in self.obs_list: # Agent icons
-        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], c_palet[0])
-        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=c_palet[0], ls="-", lw=0.8)
+        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_RBT, size=1)
+        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=COLOR_RBT, ls="-", lw=0.8)
 
         self.anim_axis.add_patch(icon)
         self.lines_plt.append(line)
         self.icons_plt.append(icon)
 
       else: # Obstacle icons
-        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], "k", size=2)
-        icon_col = patches.Circle([xdata[0,n], ydata[0,n]], self.rc, alpha=0.7, fill=True,
-                              color="gray", ls="-", lw=0, zorder=4)
+        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_OBS, size=1)
+        icon_col = patches.Circle([xdata[0,n], ydata[0,n]], self.rc, alpha=0.5, fill=True,
+                              color=COLOR_OBS, ls="-", lw=0, zorder=4)
 
-        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c="k", ls="-", lw=0)
+        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=COLOR_OBS, ls="-", lw=0)
 
         self.anim_axis.add_patch(icon)
         self.anim_axis.add_patch(icon_col)
@@ -306,29 +313,29 @@ class sim_1:
                                           self.sim.N-len(self.obs_list), self.r, self.gamma, self.ke, self.kn, self.d))
 
     # -- Main axis plotting
-    time_vec = np.linspace(0, self.tf, int(self.tf/self.dt)-1)
+    time_vec = np.linspace(0, self.tf/1000, int(self.tf/self.dt))
 
     # Zero lines
-    prel_ax.axhline(self.rc, c="k", ls="--", lw=1.4, zorder=1, alpha=1)
+    prel_ax.axhline(self.rc, c=COLOR_OBS, ls="--", lw=1.4, zorder=1, alpha=1)
     prel_ax.axhline(self.r,  c="b", ls="--", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axhline(0, c="k", ls="--", lw=1.2, zorder=0, alpha=0.5)
 
     # Plotting data
     for n in range(self.sim.N):
-      wdata_ax.plot(time_vec, omega[:,n], c=color_palette()[0], lw=1.2, alpha=0.2)
+      wdata_ax.plot(time_vec, omega[:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
       for k in range(self.sim.N):
         if k > n:
           if n in self.obs_list:
-            prel_ax.plot(time_vec, preldata[:,n,k], c="k", lw=1.2, alpha=0.3, zorder=3)
+            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_OBS, lw=1.2, alpha=0.4, zorder=3)
           else:
-            prel_ax.plot(time_vec, preldata[:,n,k], c=color_palette()[0], lw=1.2, alpha=0.3, zorder=2)
+            prel_ax.plot(time_vec, preldata[:,n,k], c=COLOR_RBT, lw=1.2, alpha=0.3, zorder=2)
 
     self.pline = prel_ax.axvline(0, c="black", ls="--", lw=1.2)
     self.wline = wdata_ax.axvline(0, c="black", ls="--", lw=1.2)
 
     # -- Animation --
     # Init of the animation class
-    anim = FuncAnimation(fig, self.animate, fargs=(xdata, ydata, phidata, c_palet, n_tail),
+    anim = FuncAnimation(fig, self.animate, fargs=(xdata, ydata, phidata, n_tail),
                          frames=tqdm(range(frames), initial=1, position=0), interval=1/fps*1000)
 
     # Generate and save the animation
