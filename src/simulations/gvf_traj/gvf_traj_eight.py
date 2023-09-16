@@ -16,17 +16,13 @@ from .gvf_traj import *
 # -> R is a rotation matrix (its inverse is equivalent to its transpose)
 # ----------------------------------------------------------------------------
 
-class gvf_ellipse(gvf_traj):
-  def __init__(self, XYoff, alpha, a, b):
+class gvf_eight(gvf_traj):
+  def __init__(self, XYoff, r1, r2):
     super().__init__()
 
-    # Ellipse parameters
+    # Eight parameters
     self.XYoff = XYoff
-    self.alpha = alpha
-    self.a, self.b = a, b
-
-    self.cosa, self.sina = np.cos(alpha), np.sin(alpha)
-    self.R = np.array([[self.cosa, self.sina], [-self.sina, self.cosa]])
+    self.r1, self.r2 = r1, r2
 
     # Get the rajectory points
     self.traj_points = self.param_points()
@@ -35,39 +31,46 @@ class gvf_ellipse(gvf_traj):
   Function to cumpute the trajectory points
   """
   def param_points(self, pts = 100):
-    t = np.linspace(0, 2*np.pi, pts)
-    x = self.XYoff[0] + self.a * np.cos(-self.alpha) * np.cos(t) \
-                      - self.b * np.sin(-self.alpha) * np.sin(t)
-    y = self.XYoff[1] + self.a * np.sin(-self.alpha) * np.cos(t) \
-                      + self.b * np.cos(-self.alpha) * np.sin(t)
+    theta = np.linspace(0, 2*np.pi, pts)
+    r = self.r1 + self.r2 * np.cos(theta)**2
+
+    # Transform from polar to cartesian coordenates
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+
     return [x, y]
 
   """\
   Phi(p)
   """
   def phi(self, p):
-    w = self.XYoff * np.ones([p.shape[0],1])
-    pel = (p - w) @ self.R
-    return (pel[:,0]/self.a)**2 + (pel[:,1]/self.b)**2 - 1
+    x, y = p[:,0], p[:,1]
+    r = np.sqrt((x**2 + y**2))
+
+    return r - self.r1 - self.r2 * (x/r)**2
 
   """\
   Phi gradiant
   """
   def grad_phi(self, p):
-    w = self.XYoff * np.ones([p.shape[0],1])
-    pel = (p - w) @ self.R
-    return 2 * pel / [self.a**2, self.b**2] @ self.R.T
+    x, y = p[:,0], p[:,1]
+    r = np.sqrt((x**2 + y**2))
 
+    return np.array([x/r - 2*self.r2*(x/r)*(1/r - x**2/r**3), \
+                     y/r - 2*self.r2*(x/r)*(-x*y/r**3)]).T
 
   """\
   Hessian
   """
   def hess_phi(self, p):
-    H = np.zeros((2,2))
-    H[0,0] = 2 * (self.cosa**2 / self.a**2 + self.sina**2 / self.b**2)
-    H[0,1] = 2 * self.sina * self.cosa * (1 / self.b**2 - 1 / self.a**2)
-    H[1,0] = H[0,0]
-    H[1,1] = 2 * (self.sina**2 / self.a**2 + self.cosa**2 / self.b**2)
+    x, y = p[:,0], p[:,1]
+    r = np.sqrt((x**2 + y**2))
+
+    H = np.zeros((p.shape[0],2,2))
+    H[:,0,0] = (1/r - x**2/r**3) - 2*self.r2*(1/r**2 - x**2/r**5 - 3*x**2/r**4 + x**4/r**9)
+    H[:,0,1] = (-x*y/r**3) - 2*self.r2*(-x*y/r**5 + x**3*y/r**9)
+    H[:,1,0] = (-x*y/r**3) - 2*self.r2*(-2*x*y/r**4 + x**3 * y / r**9)
+    H[:,1,1] = (1/r - y**2/r**3) - 2*self.r2*(-x**2/r**4 + x**2 * y**2 / r**9)
     return H
 
   """\

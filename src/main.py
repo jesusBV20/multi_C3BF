@@ -11,15 +11,27 @@ from simulations.utils.toolbox import createDir
 # Import the simulation frames
 from simulations.sim_1 import sim_1
 from simulations.sim_2 import sim_2
+from simulations.sim_3 import sim_3
 
 # Create the output directory
 FOLDER_OUTPUT = os.path.join("..", "output")
 createDir(FOLDER_OUTPUT)
 
+# DPI resolution dictionary
+RES_DIC = {
+    "480p"   : 640,
+    "HD"     : 1280,
+    "FullHD" : 1920,
+    "2K"     : 2560,
+    "4K"     : 3880
+    }
+
 """\
 Script call examples: 
-    - python3 main.py -id 1 -tf 20 -n 52 -r 0.5 -g 0.8 -d $((1/3))
-    - python3 main.py -id 2 -tf 100 -n 100 -no 50 -r 0.5 -g 1 -d 0.42
+    - python3 main.py -id 1 -tf 70 -n 23 -r 1 -g 1
+    - python3 main.py -id 2 -tf 70 -n 50 -r 0.6 -g 1
+    - python3 main.py -id 3 -tf 70 -n 100 -no 50 -r 0.6 -g 1
+    
 """
 if __name__ == '__main__':
     # Parse script arguments
@@ -31,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--r', dest='r', type=float, default=None, help="CBF parameter: r")
     parser.add_argument('-g', '--g', dest='gamma', type=float, default=None, help="CBF parameter: gamma")
     parser.add_argument('-d', '--d', dest='d', type=float, default=None, help="CBF parameter: d")
+    parser.add_argument('-tcbf', '--tcbf', dest='t_cbf', type=float, default=None, help="CBF parameter: t_cbf")
     parser.add_argument('-s', '--s', dest='s', type=float, default=None, help="GVF parameter: s")
 
     args = parser.parse_args()
@@ -55,6 +68,8 @@ if __name__ == '__main__':
         sim_frame = sim_1(**sim_params)
     elif sim_id == 2:
         sim_frame = sim_2(**sim_params)
+    elif sim_id == 3:
+        sim_frame = sim_3(**sim_params)
     else:
         print("ERROR: {0} is not a valid simulation frame ID!!".format(sim_id))
         sim_frame = None

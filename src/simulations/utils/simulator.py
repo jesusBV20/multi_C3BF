@@ -5,7 +5,7 @@
 
 import numpy as np
 
-# Rotation matrix R(-pi/2)
+# -90º rotation matrix
 E = np.array([[0, 1],[-1, 0]])
 
 # ----------------------------------------------------------------------
@@ -16,18 +16,21 @@ def rover_kinematics(P, v, phi, w, m=1, f=[0,1,0]):
   p_dot = v * np.array([np.cos(phi), np.sin(phi)]).T # Nx1 * Nx2 (dot product)
   v_dot = np.zeros(v.shape) # Constant speed
   phi_dot = w
+
   return p_dot, v_dot, phi_dot
 
 # ----------------------------------------------------------------------
 # GVF simulation class (gvf_control + cbf colision avoid controller)
 # ----------------------------------------------------------------------
-
-# -> x0:    [p0, v0, phi0]
-
-# - P es una matriz  N x 2
-# - v es un vector   N x 1 (norma de la velocidad)
-# - phi es un vector N x 1
-# - w es un vector   N x 1
+#
+# -> x0: [p0, v0, phi0]
+#
+# - P    (N x 2)
+# - v    (N x 1) : velocity norm, speed
+# - phi  (N x 1)
+# - w    (N x 1)
+#
+#---------------------------------------
 
 class simulator:
   def __init__(self, gvf_traj, n_agents, x0, dt = 10, t_cbf = None, rho = None, rho_dot = None, obs = []):
@@ -42,7 +45,7 @@ class simulator:
     else:
       self.t_cbf = t_cbf
 
-    # State vector (row -> agente) --------------------
+    # State vector (row -> agente)
     self.pf = x0[0]    # N x 2 matrix  
     self.vf = x0[1]    # N vector
     self.phif = x0[2]  # N vector
@@ -51,16 +54,16 @@ class simulator:
 
     self.w_ref = np.zeros([n_agents])
 
-    # Robot physical parameters to compute omega_max --
+    # Robot physical parameters to compute omega_max
     self.L = 0.8                      # in meters
     self.delta_max = 15 * np.pi / 180 # in radians
 
-    # Initial parameters of the GVF controller --------
+    # Initial parameters of the GVF controller
     self.s  = 1
     self.ke = 1
     self.kn = 1
 
-    # Initial parameters of the CBF controller --------
+    # Initial parameters of the CBF controller
     self.r, self.gamma = 0.6, 1
 
     if rho is not None and rho_dot is not None: 
@@ -80,11 +83,19 @@ class simulator:
     self.h_dot = np.zeros([n_agents, n_agents])
     self.kappa = np.zeros([n_agents, n_agents])
     self.psi = np.zeros([n_agents, n_agents])
+    self.lgh = np.zeros([n_agents, n_agents])
+    self.lgh_all = np.zeros([n_agents, n_agents])
+
+    self.vjevi   = np.zeros([n_agents, n_agents])
+    self.prelvi  = np.zeros([n_agents, n_agents])
+    self.rho_val = np.zeros([n_agents, n_agents])
 
     self.omega_safe = np.zeros([n_agents])
     # ---------------------------------------------
 
-  # -- Function to set the parameters of the simulations after the class construction
+  """\
+  Function to set the parameters of the simulations after the class construction
+  """
   def set_params(self, s = None, ke = None, kn = None, r = None, gamma = None):
     params = [s, ke, kn, r, gamma]
     params_def = self.s, self.ke, self.kn, self.r, self.gamma
@@ -95,11 +106,15 @@ class simulator:
 
     self.s, self.ke, self.kn, self.r, self.gamma = params
 
-  # -- Function to change the robot dynamics after the class construction
+  """\
+  Function to change the robot dynamics after the class construction
+  """
   def set_kinematics(self, kinematics_func):
     self.kinematics = kinematics_func
 
-  # -- Function to bound the value of omega
+  """\
+  Function to bound the value of omega
+  """
   def omega_clip(self, omega):
     max_w = self.vf/self.L * np.tan(self.delta_max)
     w_clipped = omega
@@ -107,13 +122,15 @@ class simulator:
       w_clipped[i] = np.clip(omega[i], -max_w[i], max_w[i])
     return w_clipped
 
-  # -- Funtion to compute omega_gvf
+  """\
+  Funtion to compute omega_gvf
+  """
   def gvf_control(self):
     # GVF trajectory data
     self.e = self.traj.phi(self.pf) # Phi (error)  N x 1
     n = self.traj.grad_phi(self.pf) # Phi gradient N x 2
-    t = self.s*n @ E.T # Phi tangent  N x 2
-    H = self.traj.hess # Phi hessian  2 x 2
+    H = self.traj.hess_phi(self.pf) # Phi hessian  N x 2 x 2
+    t = self.s*n @ E.T              # Phi tangent  N x 2
 
     # Compute the desired angular velocity to aling with the vector field
     omega = np.zeros(self.N)
@@ -122,13 +139,18 @@ class simulator:
       ni = n[i,:][:,None]
       ti = t[i,:][:,None]
 
+      if len(H.shape) < 3:
+        Hi = H
+      else:
+        Hi = H[i,:,:]
+      
       pd_dot = ti - self.ke*ei*ni
 
       norm_pd_dot = np.sqrt(pd_dot[0]**2 + pd_dot[1]**2)
       md = pd_dot / norm_pd_dot
 
       Apd_dot_dot = - self.ke * ni.T @ pd_dot * ni
-      Bpd_dot_dot = (E.T - self.ke * ei) @ H @ pd_dot
+      Bpd_dot_dot = (E.T - self.ke * ei) @ Hi @ pd_dot
       pd_dot_dot = Bpd_dot_dot + Apd_dot_dot
 
       md_dot_const = md.T @ E.T @ pd_dot_dot / norm_pd_dot
@@ -145,6 +167,9 @@ class simulator:
 
     return -omega
 
+  """\
+  Funtion to compute omega = omega_gvf + omega_safe
+  """
   def cbf_colAvoid(self):
     omega = np.copy(self.w_ref)
 
@@ -155,6 +180,13 @@ class simulator:
     self.h_dot = np.zeros(self.h_dot.shape)
     self.kappa = np.zeros(self.kappa.shape)
     self.psi = np.zeros(self.psi.shape)
+    self.lgh = np.zeros(self.lgh.shape)
+    self.lgh_all = np.zeros(self.lgh_all.shape)
+
+    self.vjevi   = np.zeros(self.vjevi.shape)
+    self.prelvi  = np.zeros(self.prelvi.shape)
+    self.rho_val = np.zeros(self.rho_val.shape)
+
     self.omega_safe = np.zeros(self.omega_safe.shape)
     
     # Mientras se satisfacen las siguientes condiciones
@@ -169,6 +201,7 @@ class simulator:
       vrel_dot_1 = v * np.array([np.sin(phi), -np.cos(phi)])
 
       psi_lgh_k = []
+
       for k in [k for k in range(self.N) if k!=i]:
         # p_rel
         prel = P[k,:] - P[i,:]
@@ -179,63 +212,79 @@ class simulator:
         vrel = V[k,:] - V[i,:]
         vrel_norm = np.sqrt(np.dot(vrel, vrel))
 
-        if self.vf[k] < v: # Don't touch that!!
-          phik = self.phif[k]
-          if prel_norm > self.rho(prel,k): # If they are not in collision...
-            cos_alfa = np.sqrt(prel_norm**2 - self.rho(prel,k)**2)/prel_norm
+        #f self.vf[k] < v: # Don't touch that!!
+        phik = self.phif[k]
+        if prel_norm > self.rho(prel,k) and v!=0: # If they are not in collision...
+          cos_alfa = np.sqrt(prel_norm**2 - self.rho(prel,k)**2)/prel_norm
 
-            # \dot v_rel (The -w is SO IMPORTANT)
-            vrel_dot_2 = self.vf[k] * np.array([-np.sin(phik), np.cos(phik)])
-            vrel_dot_ref = vrel_dot_2 * (self.w[k]) + vrel_dot_1 * (self.w_ref[i])
+          # \dot v_rel (The -w is SO IMPORTANT)
+          vrel_dot_2 = self.vf[k] * np.array([-np.sin(phik), np.cos(phik)])
+          vrel_dot_ref = vrel_dot_2 * (self.w[k]) + vrel_dot_1 * (self.w_ref[i])
 
-            # Derivative of terms involving A
-            rho_rho_dot = self.rho(prel,k) * self.rho_dot(prel, vrel,k)
+          # Derivative of terms involving A
+          rho_rho_dot = self.rho(prel,k) * self.rho_dot(prel, vrel,k)
 
-            # h(x,t)
-            dot_rel = np.dot(prel, vrel)
-            h = dot_rel + prel_norm * vrel_norm * cos_alfa
+          # h(x,t)
+          dot_rel = np.dot(prel, vrel)
+          h = dot_rel + prel_norm * vrel_norm * cos_alfa
 
-            # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
-            h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
-                            np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
-                            vrel_norm* (dot_rel - rho_rho_dot)/(cos_alfa*prel_norm)
+          # h_dot_ref(x,t) = h_dot(x, u_ref(x,t))
+          h_dot_ref = vrel_norm**2 + np.dot(prel, vrel_dot_ref) + \
+                          np.dot(vrel, vrel_dot_ref)*(cos_alfa*prel_norm)/vrel_norm + \
+                          vrel_norm* (dot_rel - rho_rho_dot)/(cos_alfa*prel_norm)
 
-            # psi(x,t)
-            psi = h_dot_ref + self.gamma * h ** 3
+          # psi(x,t)
+          psi = h_dot_ref + self.gamma * h ** 3
 
 
-            # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
-            Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)     
+          # Lgh = grad(h(x,t)) * g(x) = dh/dvrel_dot * vrel_dot
+          Lgh = np.dot(prel + vrel * (cos_alfa*prel_norm)/vrel_norm, vrel_dot_1)  
 
-            # Explicit solution of the QP problem
-            delta = 0.1
-            if abs(Lgh) > delta:
-              if psi < 0:
-                psi_lgh_k.append(- psi / Lgh) # This *(-) is SO IMPORTANT
+          self.lgh_all[k,i] = Lgh
 
-            # CBF computation variables telemetry
-            self.h[k,i] = h
-            self.h_dot[k,i] = h_dot_ref
-            self.kappa[k,i] = self.gamma * h
-            self.psi[k,i] = psi
+          if psi < 0:
+            self.lgh[k,i] = Lgh
+            
+            if self.s ==  1 and Lgh <= 0:
+              pass
+            elif self.s == -1 and Lgh >= 0:
+              pass
+            else:
+              # Explicit solution of the QP problem
+              delta = 0.1
+              if abs(Lgh) > delta:
+                psi_lgh_k.append(- psi / Lgh)
+
+          # -----------------------------------------------------------
+          # CBF computation variables telemetry
+          self.h[k,i] = h
+          self.h_dot[k,i] = h_dot_ref
+          self.kappa[k,i] = self.gamma * h
+          self.psi[k,i] = psi
+
+          self.vjevi[k,i] = np.dot(vrel/vrel_norm, vrel_dot_1/v)
+          self.prelvi[k,i] = np.dot(prel/prel_norm, vrel_dot_1/v)
         
         # prel and vrel telemetry
         self.p_rel[k,i] = prel
         self.v_rel[k,i] = vrel
-
-          # ------------------------------------------------------------
-
+        # ----------------------------------------------------------------
+        self.rho_val[k,i] = self.rho(prel,k)
+        
       if len(psi_lgh_k) != 0:
         if self.s == 1:
           self.omega_safe[i] = np.max([np.max(psi_lgh_k), 0])
         else:
           self.omega_safe[i] = np.min([np.min(psi_lgh_k), 0])
         omega[i] += self.omega_safe[i]
-
+    
     # Clip the response of the controller by the mechanical saturation value (NOOO)
     #omega = self.omega_clip(omega)
     return omega
 
+  """\
+  Funtion to integrate the simulation step by step using Euler
+  """
   def int_euler(self):
     if self.s != 0:
       self.w_ref = self.gvf_control()
