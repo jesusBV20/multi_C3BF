@@ -53,7 +53,7 @@ LGH_LIMS = [-500,500]
 """\
 ###########
 """
-class sim_4:
+class sim_2:
   def __init__(self, n_agents=12, tf=100, dt=1/60, area=210**2,
                      s=1, ke=0.3, kn=2, r=0.5, gamma=1, d=0.6, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds

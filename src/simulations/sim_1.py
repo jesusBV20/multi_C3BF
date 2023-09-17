@@ -232,7 +232,7 @@ class sim_1:
   """\
   Funtion to generate the full animation of the simulation
   """
-  def generate_animation(self, output_folder, tf_anim=None, dpi=200, n_tail=50):
+  def generate_animation(self, output_folder, tf_anim=None, res=1920, n_tail=50):
     if tf_anim is None:
       tf_anim = self.tf
     
@@ -253,9 +253,9 @@ class sim_1:
     
     # -- Generating the animation --
     # Figure and grid init
-    figsize=(14, 8)
+    figsize = (16,9)
 
-    fig = plt.figure(figsize=figsize, dpi=dpi)
+    fig = plt.figure(figsize=figsize, dpi=res/figsize[0])
     grid = plt.GridSpec(3, 5, hspace=0.1, wspace=0.4)
 
     self.anim_axis  = fig.add_subplot(grid[:, 0:3])
@@ -323,6 +323,6 @@ class sim_1:
                          frames=tqdm(range(frames), initial=1, position=0), interval=1/fps*1000)
 
     # Generate and save the animation
-    writer = FFMpegWriter(fps=fps, metadata=dict(artist='Jesús Bautista Villar'), bitrate=1000)
+    writer = FFMpegWriter(fps=fps, metadata=dict(artist='Jesús Bautista Villar'), bitrate=10000)
     anim.save(os.path.join(output_folder, "anim__{0}_{1}_{2}__{3}_{4}_{5}.mp4".format(*time.localtime()[0:6])), 
               writer = writer)
