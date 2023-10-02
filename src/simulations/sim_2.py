@@ -139,8 +139,10 @@ class sim_2:
       omega[i,:]    = self.sim.w
       preldata[i,:,:]  = np.linalg.norm(self.sim.p_rel, axis=2)
       vreldata[i,:,:,:]  = self.sim.v_rel
-      lgh[i,:,:] = self.sim.lgh
       omegasf[i,:] = self.sim.omega_safe
+
+      if i*self.dt > 20:
+        lgh[i,:,:] = self.sim.lgh
 
       pfshipdata[i,:] = pf_ship
 

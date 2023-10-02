@@ -75,7 +75,8 @@ class sim_1:
     p0 = np.array(self.gvf_traj.param_points(pts=n_agents+1)).T[:-1,:]*1.2
 
     v0 = np.linspace(0,5,n_agents) + 2
-    v0[-3:] = v0[-3:] + 15
+    if n_agents>3:
+      v0[-3:] = v0[-3:] + 15
     v0 = v0[:,None]
     np.random.shuffle(v0)
     self.v = v0

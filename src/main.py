@@ -9,6 +9,7 @@ import argparse
 from simulations.utils.toolbox import createDir
 
 # Import the simulation frames
+from simulations.sim_0 import sim_0
 from simulations.sim_1 import sim_1
 from simulations.sim_2 import sim_2
 from simulations.sim_3 import sim_3
@@ -28,6 +29,7 @@ RES_DIC = {
 
 """\
 Script call examples: 
+    - python3 main.py -id 0 -tf 70 -r 1 -g 1
     - python3 main.py -id 1 -tf 70 -n 23 -r 1 -g 1
     - python3 main.py -id 2 -tf 70 -n 50 -r 0.6 -g 1
     - python3 main.py -id 3 -tf 70 -n 100 -no 50 -r 0.6 -g 1
@@ -64,7 +66,9 @@ if __name__ == '__main__':
     print("Simulation parameters: ", sim_params)
 
     # Initilise the simulation frame
-    if sim_id == 1:
+    if sim_id == 0:
+        sim_frame = sim_0(**sim_params)
+    elif sim_id == 1:
         sim_frame = sim_1(**sim_params)
     elif sim_id == 2:
         sim_frame = sim_2(**sim_params)
