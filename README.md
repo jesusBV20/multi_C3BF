@@ -9,4 +9,5 @@ This repository contains some Python simulations to validate the results and fin
     }
 
 Submitted paper: https://arxiv.org/pdf/2309.09101.pdf
+
 Visit our web for more research on robot swarms: https://www.swarmsystemslab.eu/
