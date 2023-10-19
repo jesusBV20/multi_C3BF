@@ -13,7 +13,7 @@ RES = 1920 # 720p
 from matplotlib.path import Path
 import matplotlib.patches as patches
 
-# Paletas de colores suaves (https://g.co/kgs/4A3q4T)
+# Cake color palette (https://g.co/kgs/4A3q4T)
 cake_b = "#d9daff"
 cake_r = "#ffdbd9"
 cake_y = "#fffbd9"

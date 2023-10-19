@@ -13,6 +13,7 @@ from simulations.sim_0 import sim_0
 from simulations.sim_1 import sim_1
 from simulations.sim_2 import sim_2
 from simulations.sim_3 import sim_3
+from simulations.sim_4_intro import sim_4
 
 # Create the output directory
 FOLDER_OUTPUT = os.path.join("..", "output")
@@ -74,6 +75,8 @@ if __name__ == '__main__':
         sim_frame = sim_2(**sim_params)
     elif sim_id == 3:
         sim_frame = sim_3(**sim_params)
+    elif sim_id == 4:
+        sim_frame = sim_4(**sim_params)
     else:
         print("ERROR: {0} is not a valid simulation frame ID!!".format(sim_id))
         sim_frame = None
