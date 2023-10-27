@@ -1,6 +1,7 @@
 #!/usr/bin/env python #
 """\
 # Copyright (C) 2023 Jesús Bautista Villar <jesbauti20@gmail.com>
+- This script can configure and launch every simulation contained in the "simularions" directory -
 """
 
 import os
@@ -30,10 +31,10 @@ RES_DIC = {
 
 """\
 Script call examples: 
-    - python3 main.py -id 0 -tf 70 -r 1 -g 1
-    - python3 main.py -id 1 -tf 70 -n 23 -r 1 -g 1
-    - python3 main.py -id 2 -tf 70 -n 50 -r 0.6 -g 1
-    - python3 main.py -id 3 -tf 70 -n 100 -no 50 -r 0.6 -g 1
+    - python3 sim_launcher.py -id 0 -tf 70 -r 1 -g 1
+    - python3 sim_launcher.py -id 1 -tf 70 -n 23 -r 1 -g 1
+    - python3 sim_launcher.py -id 2 -tf 70 -n 50 -r 0.6 -g 1
+    - python3 sim_launcher.py -id 3 -tf 70 -n 100 -no 50 -r 0.6 -g 1
     
 """
 if __name__ == '__main__':
