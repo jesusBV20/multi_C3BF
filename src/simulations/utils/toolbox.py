@@ -19,11 +19,11 @@ cake_r = "#ffdbd9"
 cake_y = "#fffbd9"
 cake_g = "#dcffd9"
 
-"""
-Unicycle_patch (Héctor García de Marina)
+"""\
+Unicycle_patch (Héctor García de Marina) -
 """
 def unicycle_patch(XY, yaw, color, size=1, lw=0.5):
-    # XY es una lista [X, Y]
+    # XY is a list [X, Y]
     Rot = np.array([[np.cos(yaw), np.sin(yaw)],[-np.sin(yaw), np.cos(yaw)]])
 
     apex = 45*np.pi/180 # 30 degrees apex angle
@@ -49,16 +49,8 @@ def unicycle_patch(XY, yaw, color, size=1, lw=0.5):
 
     return patches.PathPatch(path, fc=color, lw=lw)
 
-"""
-absmaxND
-"""
-def absmaxND(a):
-  amax = np.max(a)
-  amin = np.min(a)
-  return np.where(-amin > amax, amin, amax)
-
-"""
-Función para dar formato a los plots de datos
+"""\
+Function to format the data axis following the same rule -
 """
 def fmt_data_axis(ax, ylabel = "", xlabel = "", title = "",
                   xlim = None, ylim = None, invy = True, d=2):
@@ -77,10 +69,9 @@ def fmt_data_axis(ax, ylabel = "", xlabel = "", title = "",
   ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.{}f'.format(d)))
   ax.grid(True)
 
-"""
-Función para calcular los puntos corte P1 y P2, con respectro una circunferencia
-con centro en "c" y radio "r", que generan las dos rectas tangentes que pasan
-por P1.
+"""\
+Function to calculate the cut points P1 and P2, with respect to a circle with center at 'c' 
+and radius 'r', which generate the two tangent lines passing through P1 -
 """
 def cone_params(c, r, p0):
   cx, cy = c
@@ -94,12 +85,12 @@ def cone_params(c, r, p0):
   else:
     return None, None
   
-"""
-Create a new directory if it doesn't exist
+"""\
+Create a new directory if it doesn't exist -
 """
 def createDir(dir):
   try:
     os.mkdir(dir)
-    print("¡Directorio '{}' creado!".format(dir))
+    print("Directory '{}' created!".format(dir))
   except:
-    print("¡El directorio '{}' ya existe!".format(dir))
+    print("The directory '{}' already exists!".format(dir))
