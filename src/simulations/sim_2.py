@@ -13,6 +13,8 @@ from numpy import linalg as LA
 
 # Graphic tools
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 from seaborn import color_palette
 import matplotlib.patches as patches
 
@@ -59,7 +61,8 @@ class sim_2:
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
     self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, 
-                 "lgh": None, "pfship": None, "omegasafe": None}
+                 "lgh": None, "pfship": None, "omegasafe": None, 
+                 "prelvi": None, "vjevi" : None}
 
     # Trayectory parameters and generation
     self.s = s
@@ -108,7 +111,11 @@ class sim_2:
     self.gvf_traj.vector_field(XYoff, area, s, ke)
 
     # Title of the plots
-    self.title = r"$N$ = {0:d}, $r$ = {1:.1f}, $\kappa$ = {2:.2f} $h^3$".format(self.sim.N, self.r, gamma)
+    self.title = r"$N$ = {0:d}, $r$ = {1:.1f}".format(self.sim.N, self.r)
+    if gamma == 1:
+      self.title = self.title + r", $\kappa$ = $h^3$"
+    else:
+      self.title = self.title + r", $\kappa$ = {0:.2f} $h^3$".format(gamma)
     self.title = self.title + r", $k_e$ = {0:.1f}, $k_n$ = {1:.1f}".format(ke, kn)
     self.title = self.title + r", $d$ = {0:.2f}".format(d)
 
@@ -129,6 +136,8 @@ class sim_2:
     omega    = np.empty([its,self.sim.N])
     omegasf  = np.empty([its,self.sim.N])
     lgh      = np.empty([its,self.sim.N,self.sim.N])
+    prelvi   = np.empty([its,self.sim.N,self.sim.N])
+    vjevi    = np.empty([its,self.sim.N,self.sim.N])
 
     n_check = 1
     self.sim.vf[n_check:] = np.zeros((self.sim.N-n_check,1))
@@ -140,6 +149,8 @@ class sim_2:
       preldata[i,:,:]  = np.linalg.norm(self.sim.p_rel, axis=2)
       vreldata[i,:,:,:]  = self.sim.v_rel
       omegasf[i,:] = self.sim.omega_safe
+      prelvi[i,:,:] = self.sim.prelvi
+      vjevi[i,:,:] = self.sim.vjevi
 
       if i*self.dt > 20:
         lgh[i,:,:] = self.sim.lgh
@@ -167,6 +178,8 @@ class sim_2:
     self.data["lgh"] = lgh
     self.data["pfship"] = pfshipdata
     self.data["omegasafe"] = omegasf
+    self.data["prelvi"] = prelvi
+    self.data["vjevi"] = vjevi
 
   """\
   Function to generate the summary graphical plot of the whole simulation
@@ -180,31 +193,41 @@ class sim_2:
     omega    = self.data["omega"]
     lgh    = self.data["lgh"]
     pfshipdata = self.data["pfship"]
-    
+    prelvi = self.data["prelvi"]
+    vjevi = self.data["vjevi"]
+
     # -- Plotting the summary --
     # Figure and grid init
     fig = plt.figure(figsize=FIGSIZE, dpi=dpi)
-    grid = plt.GridSpec(3, 5, hspace=0.1, wspace=0.4)
+    grid_outer = plt.GridSpec(1, 2, hspace=0, wspace=0.1)
 
-    main_ax  = fig.add_subplot(grid[:, 0:3])
-    prel_ax  = fig.add_subplot(grid[0, 3:5], xticklabels=[])
-    lgh_ax = fig.add_subplot(grid[1, 3:5], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid[2, 3:5])
+    grid_main = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec = grid_outer[0])
+    grid_data = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec = grid_outer[1], wspace = .5)
 
+    main_ax  = fig.add_subplot(grid_main[0,0])
+    prel_ax  = fig.add_subplot(grid_data[0, 0], xticklabels=[])
+    lgh_ax = fig.add_subplot(grid_data[1, 0], xticklabels=[])
+    wdata_ax = fig.add_subplot(grid_data[2, 0])
+    prelvi_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
+    vjevi_ax = fig.add_subplot(grid_data[1, 1], xticklabels=[])
+    
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
     main_ax.set_ylim(PY_LIMS)
     main_ax.set_ylabel(r"$p_y$ (L)")  
     main_ax.set_xlabel(r"$p_x$ (L)")
+    main_ax.set_aspect("equal")
     main_ax.grid(True)
 
     fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, r"$L_gh^i$")
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$")
     fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1])
+    fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, main_ax)
-    main_ax.set_title(self.title)
+    main_ax.set_title(self.title, fontdict={'fontsize': 10})
 
     # Generating unicycle icons
     li = xdata.shape[0] - 1
@@ -235,6 +258,8 @@ class sim_2:
     prel_ax.axhline(self.r,  c="black", ls="--", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
     lgh_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
+    prelvi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
+    vjevi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
 
     # Plotting data
     for n in range(self.sim.N):
@@ -245,6 +270,8 @@ class sim_2:
           prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
           if self.v[n] > self.v[k]:
             lgh_ax.plot(time_vec, lgh[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.1, zorder=2)
+            prelvi_ax.plot(time_vec, prelvi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+            vjevi_ax.plot(time_vec, vjevi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
 
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))

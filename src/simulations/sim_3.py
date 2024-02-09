@@ -13,6 +13,8 @@ from numpy import linalg as LA
 
 # Graphic tools
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 from seaborn import color_palette
 import matplotlib.patches as patches
 
@@ -53,7 +55,8 @@ class sim_3:
                      s=1, ke=0.1, kn=2, r=0.5, gamma=1, d=0.87, d_obs=0.89, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
-    self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, "lgh": None}
+    self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, "lgh": None,
+                 "prelvi": None, "vjevi" : None}
 
     # Trayectory parameters and generation
     self.s = s
@@ -136,6 +139,8 @@ class sim_3:
     preldata = np.empty([its,self.sim.N,self.sim.N,2])
     omega    = np.empty([its,self.sim.N])
     lgh    = np.empty([its,self.sim.N,self.sim.N])
+    prelvi   = np.empty([its,self.sim.N,self.sim.N])
+    vjevi    = np.empty([its,self.sim.N,self.sim.N])
 
     for i in tqdm(range(its)):
       # Obstacle sim data
@@ -157,6 +162,8 @@ class sim_3:
       omega[i,n_obs:]    = self.sim.w[n_obs:]
       preldata[i,:,:,:]  = self.sim.p_rel
       lgh[i,:,:] = self.sim.lgh
+      prelvi[i,:,:] = self.sim.prelvi
+      vjevi[i,:,:] = self.sim.vjevi
 
       # Robots simulator euler step integration
       self.sim.int_euler()
@@ -167,6 +174,8 @@ class sim_3:
     self.data["prelnorm"] = np.linalg.norm(preldata, axis=3)
     self.data["omega"] = omega
     self.data["lgh"] = lgh
+    self.data["prelvi"] = prelvi
+    self.data["vjevi"] = vjevi
 
 
   """\
@@ -180,31 +189,41 @@ class sim_3:
     preldata = self.data["prelnorm"]
     omega    = self.data["omega"]
     lgh    = self.data["lgh"]
+    prelvi = self.data["prelvi"]
+    vjevi = self.data["vjevi"]
     
     # -- Plotting the summary --
     # Figure and grid init
     fig = plt.figure(figsize=FIGSIZE, dpi=dpi)
-    grid = plt.GridSpec(3, 5, hspace=0.1, wspace=0.4)
+    grid_outer = plt.GridSpec(1, 2, hspace=0, wspace=0.1)
 
-    main_ax  = fig.add_subplot(grid[:, 0:3])
-    prel_ax  = fig.add_subplot(grid[0, 3:5], xticklabels=[])
-    lgh_ax = fig.add_subplot(grid[1, 3:5], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid[2, 3:5])
+    grid_main = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec = grid_outer[0])
+    grid_data = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec = grid_outer[1], wspace = .5)
 
+    main_ax  = fig.add_subplot(grid_main[0,0])
+    prel_ax  = fig.add_subplot(grid_data[0, 0], xticklabels=[])
+    lgh_ax = fig.add_subplot(grid_data[1, 0], xticklabels=[])
+    wdata_ax = fig.add_subplot(grid_data[2, 0])
+    prelvi_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
+    vjevi_ax = fig.add_subplot(grid_data[1, 1], xticklabels=[])
+    
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
     main_ax.set_ylim(PY_LIMS)
     main_ax.set_ylabel(r"$p_y$ (L)")  
     main_ax.set_xlabel(r"$p_x$ (L)")
+    main_ax.set_aspect("equal")
     main_ax.grid(True)
 
-    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, ylabel = r"$L_g h^i(q_{ij})$")
+    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$")
     fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1])
+    fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, main_ax)
-    main_ax.set_title(self.title)
+    main_ax.set_title(self.title, fontdict={'fontsize': 10})
 
     # Generating unicycle icons
     li = xdata.shape[0] - 1
@@ -265,8 +284,10 @@ class sim_3:
         if k > n:
           if self.v[n+n_obs] > self.v[k+n_obs]:
             lgh_ax.plot(time_vec, lgh[:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
+            prelvi_ax.plot(time_vec, prelvi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+            vjevi_ax.plot(time_vec, vjevi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
     
-    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=9)
+    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=6)
     
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))

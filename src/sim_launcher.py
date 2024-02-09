@@ -90,6 +90,6 @@ if __name__ == '__main__':
         sim_frame.plot_summary(FOLDER_OUTPUT)
 
     # Generate the animation
-    if sim_frame is not None:
-        print("Generating the animation...")
-        sim_frame.generate_animation(FOLDER_OUTPUT)
+    # if sim_frame is not None:
+    #     print("Generating the animation...")
+    #     sim_frame.generate_animation(FOLDER_OUTPUT)
