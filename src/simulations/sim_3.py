@@ -39,7 +39,7 @@ COLOR_OBS = color_palette()[3]
 LW, LH = 12, 4.8
 FIGSIZE = [LW, LH]
 
-PX_LIMS = [-70,70]
+PX_LIMS = [-60,60]
 PY_LIMS = [-50,50]
 P_LIMS = [-70,70]
 
@@ -140,7 +140,7 @@ class sim_3:
     omega    = np.empty([its,self.sim.N])
     lgh    = np.empty([its,self.sim.N,self.sim.N])
     prelvi   = np.empty([its,self.sim.N,self.sim.N])
-    vjevi    = np.empty([its,self.sim.N,self.sim.N])
+    #vjevi    = np.empty([its,self.sim.N,self.sim.N])
 
     for i in tqdm(range(its)):
       # Obstacle sim data
@@ -161,9 +161,10 @@ class sim_3:
       phidata[i,n_obs:]  = self.sim.phif[n_obs:]
       omega[i,n_obs:]    = self.sim.w[n_obs:]
       preldata[i,:,:,:]  = self.sim.p_rel
+
       lgh[i,:,:] = self.sim.lgh
       prelvi[i,:,:] = self.sim.prelvi
-      vjevi[i,:,:] = self.sim.vjevi
+      #vjevi[i,:,:] = self.sim.vjevi
 
       # Robots simulator euler step integration
       self.sim.int_euler()
@@ -175,7 +176,7 @@ class sim_3:
     self.data["omega"] = omega
     self.data["lgh"] = lgh
     self.data["prelvi"] = prelvi
-    self.data["vjevi"] = vjevi
+    #self.data["vjevi"] = vjevi
 
 
   """\
@@ -190,7 +191,7 @@ class sim_3:
     omega    = self.data["omega"]
     lgh    = self.data["lgh"]
     prelvi = self.data["prelvi"]
-    vjevi = self.data["vjevi"]
+    #vjevi = self.data["vjevi"]
     
     # -- Plotting the summary --
     # Figure and grid init
@@ -198,14 +199,14 @@ class sim_3:
     grid_outer = plt.GridSpec(1, 2, hspace=0, wspace=0.1)
 
     grid_main = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec = grid_outer[0])
-    grid_data = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec = grid_outer[1], wspace = .5)
+    grid_data = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec = grid_outer[1], wspace = .5)
 
     main_ax  = fig.add_subplot(grid_main[0,0])
     prel_ax  = fig.add_subplot(grid_data[0, 0], xticklabels=[])
-    lgh_ax = fig.add_subplot(grid_data[1, 0], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid_data[2, 0])
-    prelvi_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
-    vjevi_ax = fig.add_subplot(grid_data[1, 1], xticklabels=[])
+    lgh_ax = fig.add_subplot(grid_data[1, 0])
+    wdata_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
+    prelvi_ax = fig.add_subplot(grid_data[1, 1])
+    #vjevi_ax = fig.add_subplot(grid_data[1, 1])
     
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
@@ -214,12 +215,14 @@ class sim_3:
     main_ax.set_xlabel(r"$p_x$ (L)")
     main_ax.set_aspect("equal")
     main_ax.grid(True)
-
-    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$")
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
-    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1])
-    fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
+    
+    x_delta = self.tf/1000
+    x_lims = [0 - x_delta*0.06, self.tf/1000 + x_delta*0.06]
+    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", xlim=x_lims)
+    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1], xlim=x_lims)
+    #fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1], xlim=x_lims)
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, main_ax)
@@ -251,6 +254,7 @@ class sim_3:
 
     # -- Data axis plotting
     time_vec = np.linspace(0, self.tf/1000, int(self.tf/self.dt))
+    it_0 = 3
 
     # Zero lines
     prel_ax.axhline(self.r,  c="black", ls="--", lw=1.2, zorder=0, alpha=1)
@@ -264,30 +268,30 @@ class sim_3:
     # Plotting data
     for n in range(self.sim.N):
       if n in self.obs_list:
-        wdata_ax.plot(time_vec, omega[:,n], c=COLOR_OBS, lw=1.2, alpha=0.2)
+        wdata_ax.plot(time_vec[it_0:], omega[it_0:,n], c=COLOR_OBS, lw=1.2, alpha=0.2)
       else:
-        wdata_ax.plot(time_vec, omega[:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
+        wdata_ax.plot(time_vec[it_0:], omega[it_0:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
 
       for k in range(self.sim.N):
         if k > n:
           if n in self.obs_list:
             if k in self.obs_list:
-              prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=2)
+              prel_ax.plot(time_vec[it_0:], preldata[it_0:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=2)
             else:
-              prel_ax.plot(time_vec, preldata[:,k,n], c="k", lw=1.2, alpha=0.09, zorder=3)
+              prel_ax.plot(time_vec[it_0:], preldata[it_0:,k,n], c="k", lw=1.2, alpha=0.09, zorder=3)
           
           else:
-            prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
+            prel_ax.plot(time_vec[it_0:], preldata[it_0:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
 
       n_obs = self.sim_obs.N
       for k in range(self.sim.N - n_obs):
         if k > n:
           if self.v[n+n_obs] > self.v[k+n_obs]:
-            lgh_ax.plot(time_vec, lgh[:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
-            prelvi_ax.plot(time_vec, prelvi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
-            vjevi_ax.plot(time_vec, vjevi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+            lgh_ax.plot(time_vec[it_0:], lgh[it_0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
+            prelvi_ax.plot(time_vec[it_0:], prelvi[it_0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+            #vjevi_ax.plot(time_vec[it_0:], vjevi[it_0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
     
-    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=6)
+    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=5)
     
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))

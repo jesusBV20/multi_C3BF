@@ -202,14 +202,14 @@ class sim_2:
     grid_outer = plt.GridSpec(1, 2, hspace=0, wspace=0.1)
 
     grid_main = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec = grid_outer[0])
-    grid_data = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec = grid_outer[1], wspace = .5)
+    grid_data = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec = grid_outer[1], wspace = .5)
 
     main_ax  = fig.add_subplot(grid_main[0,0])
     prel_ax  = fig.add_subplot(grid_data[0, 0], xticklabels=[])
-    lgh_ax = fig.add_subplot(grid_data[1, 0], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid_data[2, 0])
-    prelvi_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
-    vjevi_ax = fig.add_subplot(grid_data[1, 1], xticklabels=[])
+    lgh_ax = fig.add_subplot(grid_data[1, 0])
+    wdata_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
+    prelvi_ax = fig.add_subplot(grid_data[1, 1])
+    # vjevi_ax = fig.add_subplot(grid_data[1, 1], xticklabels=[])
     
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
@@ -223,7 +223,7 @@ class sim_2:
     fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$")
     fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
     fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1])
-    fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
+    #fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, main_ax)
@@ -259,7 +259,7 @@ class sim_2:
     wdata_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
     lgh_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
     prelvi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
-    vjevi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
+    #vjevi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=1)
 
     # Plotting data
     for n in range(self.sim.N):
@@ -271,7 +271,7 @@ class sim_2:
           if self.v[n] > self.v[k]:
             lgh_ax.plot(time_vec, lgh[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.1, zorder=2)
             prelvi_ax.plot(time_vec, prelvi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
-            vjevi_ax.plot(time_vec, vjevi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+            # vjevi_ax.plot(time_vec, vjevi[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
 
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))
