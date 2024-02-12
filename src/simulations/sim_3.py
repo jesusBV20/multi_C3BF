@@ -211,17 +211,17 @@ class sim_3:
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
     main_ax.set_ylim(PY_LIMS)
-    main_ax.set_ylabel(r"$p_y$ (L)")  
-    main_ax.set_xlabel(r"$p_x$ (L)")
+    main_ax.set_ylabel(r"$p_y$ [L]")  
+    main_ax.set_xlabel(r"$p_x$ [L]")
     main_ax.set_aspect("equal")
     main_ax.grid(True)
     
     x_delta = self.tf/1000
     x_lims = [0 - x_delta*0.06, self.tf/1000 + x_delta*0.06]
-    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS, xlim=x_lims)
-    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", xlim=x_lims)
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS, xlim=x_lims)
-    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1], xlim=x_lims)
+    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", title="a)", ylim=PDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", r"$t$ [T]", title="b)", xlim=x_lims)
+    fmt_data_axis(wdata_ax, r"$\omega$ [rad/T]", title="c)", ylim=WDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", title="d)", ylim=[-1.1,1.1], xlim=x_lims)
     #fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1], xlim=x_lims)
 
     # -- Main axis plotting
@@ -291,7 +291,7 @@ class sim_3:
             prelvi_ax.plot(time_vec[it_0:], prelvi[it_0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
             #vjevi_ax.plot(time_vec[it_0:], vjevi[it_0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
     
-    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=5)
+    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=5.4)
     
     # Save the figure
     plt.savefig(os.path.join(output_folder, "plot__{0}_{1}_{2}__{3}_{4}_{5}.png".format(*time.localtime()[0:6])))

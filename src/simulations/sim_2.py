@@ -214,15 +214,15 @@ class sim_2:
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
     main_ax.set_ylim(PY_LIMS)
-    main_ax.set_ylabel(r"$p_y$ (L)")  
-    main_ax.set_xlabel(r"$p_x$ (L)")
+    main_ax.set_ylabel(r"$p_y$ [L]")  
+    main_ax.set_xlabel(r"$p_x$ [L]")
     main_ax.set_aspect("equal")
     main_ax.grid(True)
 
-    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$")
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
-    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", ylim=[-1.1,1.1])
+    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", title="a)", ylim=PDATA_LIMS)
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", r"$t$ [T]", title="b)")
+    fmt_data_axis(wdata_ax, r"$\omega$ [rad/T]", title="c)", ylim=WDATA_LIMS)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", title="d)", ylim=[-1.1,1.1])
     #fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
 
     # -- Main axis plotting
@@ -346,8 +346,8 @@ class sim_2:
     self.anim_axis.grid(True)
 
     fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, r"$L_gh^i$")
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
+    fmt_data_axis(lgh_ax, r"$L_gh^i$", r"$t$ (T)")
+    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", ylim=WDATA_LIMS)
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, self.anim_axis)
