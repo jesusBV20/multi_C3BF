@@ -260,6 +260,7 @@ class sim_3:
     prel_ax.axhline(self.r,  c="black", ls="--", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
     prel_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
+    prelvi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
 
     prel_ax.axhline(0,0,  c="blue", ls="-", lw=1.2, label=r"$||p_{ij}^b||$")
     prel_ax.axhline(0,0,  c="red", ls="-", lw=1.2, label=r"$||p_{ij}^r||$")

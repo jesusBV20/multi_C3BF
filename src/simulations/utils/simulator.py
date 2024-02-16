@@ -243,7 +243,8 @@ class simulator:
           self.lgh_all[k,i] = Lgh
 
           if psi < 0:
-            self.lgh[k,i] = Lgh
+            # if Lgh >= 0:
+            #   self.lgh[k,i] = Lgh
             
             if self.s ==  1 and Lgh <= 0:
               pass
