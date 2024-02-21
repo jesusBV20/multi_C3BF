@@ -48,11 +48,12 @@ PDATA_LIMS = [0,10]
 ###########
 """
 class sim_1:
-  def __init__(self, n_agents=12, tf=100, dt=1/60, a=8, b=4, area=70**2,
-                     s=1, ke=0.1, kn=2, r=0.5, gamma=1, d=0.83, t_cbf=0):
+  def __init__(self, n_agents=12, tf=100, dt=1/60, a=10, b=6, area=70**2,
+                     s=1, ke=0.1, kn=2, r=0.5, gamma=1, d=1, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
     self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, "lgh": None}
+    np.random.seed(2014)
 
     # Trayectory parameters and generation
     self.s = s
@@ -68,7 +69,17 @@ class sim_1:
     rho_dot = lambda prel, vrel, k: (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
                                        * prel.T@vrel/np.sqrt(prel.T@prel))
 
-
+    # alfa = 1
+    # mu = 4
+    # sigm = lambda x: 1/(1 + np.exp(alfa*(x - mu)))
+    # rho = lambda prel, k: (np.sqrt(prel.T@prel))**(d)/r**(d-1) * sigm(np.sqrt(prel.T@prel))
+    # rho_dot = lambda prel, vrel, k: ( (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))
+    #                                      + (np.sqrt(prel.T@prel))**(d)/r**(d-1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))*(1-sigm(np.sqrt(prel.T@prel))) \
+    #                                      * (-alfa) ) \
+    #                                      * prel.T@vrel/np.sqrt(prel.T@prel))
+    
     # -- Initial state --
 
     # Initial states of the robots
