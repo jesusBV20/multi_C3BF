@@ -39,8 +39,8 @@ COLOR_OBS = color_palette()[3]
 LW, LH = 12, 4.8
 FIGSIZE = [LW, LH]
 
-PX_LIMS = [-60,60]
-PY_LIMS = [-50,50]
+PX_LIMS = [-63,63]
+PY_LIMS = [-54,54]
 P_LIMS = [-70,70]
 
 WDATA_LIMS = [-4,4]
@@ -57,6 +57,7 @@ class sim_3:
     self.tf = tf * 1000  # in miliseconds
     self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, "lgh": None,
                  "prelvi": None, "vjevi" : None}
+    np.random.seed(2000)
 
     # Trayectory parameters and generation
     self.s = s
@@ -76,11 +77,31 @@ class sim_3:
     rho_obs = lambda prel, k: (np.sqrt(prel.T@prel)**(d_obs)/r**(d-1))
     rho_dot_obs = lambda prel, vrel, k: (d_obs * np.sqrt(prel.T@prel)**(d_obs-1)/r**(d_obs - 1) \
                                                * prel.T@vrel/np.sqrt(prel.T@prel))
+    
+    # alfa = 1
+    # mu = 6
+    # sigm = lambda x: 1/(1 + np.exp(alfa*(x - mu)))
+
+    # rho = lambda prel, k: (np.sqrt(prel.T@prel))**(d)/r**(d-1) * sigm(np.sqrt(prel.T@prel))
+    # rho_dot = lambda prel, vrel, k: ( (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))
+    #                                      + (np.sqrt(prel.T@prel))**(d)/r**(d-1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))*(1-sigm(np.sqrt(prel.T@prel))) \
+    #                                      * (-alfa) ) \
+    #                                      * prel.T@vrel/np.sqrt(prel.T@prel))
+    
+    # rho_obs = lambda prel, k: (np.sqrt(prel.T@prel))**(d_obs)/r**(d_obs-1) * sigm(np.sqrt(prel.T@prel))
+    # rho_dot_obs = lambda prel, vrel, k: ( (d_obs * np.sqrt(prel.T@prel)**(d_obs-1)/r**(d_obs - 1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))
+    #                                      + (np.sqrt(prel.T@prel))**(d_obs)/r**(d_obs-1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))*(1-sigm(np.sqrt(prel.T@prel))) \
+    #                                      * (-alfa) ) \
+    #                                      * prel.T@vrel/np.sqrt(prel.T@prel))
 
     # -- Initial state --
 
     # Initial states of the robots
-    p0_rbt = np.array(self.gvf_traj.param_points(pts=n_agents-n_obs+1)).T[:-1,:]*2.1
+    p0_rbt = np.array(self.gvf_traj.param_points(pts=n_agents-n_obs+1)).T[:-1,:]*2.36
     p0_obs = np.array(self.gvf_traj.param_points(pts=n_obs+1)).T[:-1,:]*1.2
     p0 = np.vstack([p0_obs,p0_rbt])
 
@@ -89,7 +110,9 @@ class sim_3:
     np.random.shuffle(v0)
     self.v = v0
 
-    p0 = p0 * (v0/np.max(v0)/4 + 1) # ensure assumption 4
+    # ensure good initial condition
+    p0[:n_obs] = p0[:n_obs] * (v0[:n_obs]/np.max(v0[:n_obs])/2 + 1) 
+    p0[n_obs:] = p0[n_obs:] * (v0[n_obs:]/np.max(v0[n_obs:])/3 + 1)
     p0_obs = p0[:n_obs]
     p0_rbt = p0[n_obs:]
 

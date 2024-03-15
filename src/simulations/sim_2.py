@@ -63,6 +63,7 @@ class sim_2:
     self.data = {"pf": None, "phif": None, "prelnorm": None, "omega": None, 
                  "lgh": None, "pfship": None, "omegasafe": None, 
                  "prelvi": None, "vjevi" : None}
+    np.random.seed(2024)
 
     # Trayectory parameters and generation
     self.s = s
@@ -79,6 +80,17 @@ class sim_2:
     rho = lambda prel, k: (np.sqrt(prel.T@prel)**(d)/r**(d-1))
     rho_dot = lambda prel, vrel, k: (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
                                        * prel.T@vrel/np.sqrt(prel.T@prel))
+    
+    # alfa = 1
+    # mu = 4
+    # sigm = lambda x: 1/(1 + np.exp(alfa*(x - mu)))
+    # rho = lambda prel, k: (np.sqrt(prel.T@prel))**(d)/r**(d-1) * sigm(np.sqrt(prel.T@prel))
+    # rho_dot = lambda prel, vrel, k: ( (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))
+    #                                      + (np.sqrt(prel.T@prel))**(d)/r**(d-1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))*(1-sigm(np.sqrt(prel.T@prel))) \
+    #                                      * (-alfa) ) \
+    #                                      * prel.T@vrel/np.sqrt(prel.T@prel))
 
     # -- Initial state --
     # Initial state of the battleship
@@ -159,7 +171,7 @@ class sim_2:
 
       # Activate agents one by one
       if n_check < self.sim.N:
-        if (preldata[i,0:n_check,n_check] > self.r*1.5).all():
+        if (preldata[i,0:n_check,n_check] > self.r*2).all():
           self.sim.vf[n_check] = self.v[n_check]
           n_check = n_check + 1
       

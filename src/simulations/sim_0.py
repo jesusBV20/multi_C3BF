@@ -36,7 +36,7 @@ COLOR_RBT = color_palette()[0]
 PX_LIMS = [-25.7,25.7]
 PY_LIMS = [-25,25]
 
-WDATA_LIMS = [-1,1]
+WDATA_LIMS = [-1.5,1.5]
 LDATA_LIMS = [-5,200]
 
 ARR_KW = {"width":0.003, "scale":51, "zorder":2, "alpha":0.9}
@@ -47,7 +47,7 @@ COLOR_LINE_PLT = [color_palette()[0], "darkgreen"]
 ###########
 """
 class sim_0:
-  def __init__(self, n_agents=12, tf=100, dt=1/60, a=15, b=10, area=50**2,
+  def __init__(self, n_agents=12, tf=100, dt=1/60, a=10, b=10, area=50**2,
                      s=1, ke=1, kn=2, r=2, gamma=1, d=0.83, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
@@ -67,13 +67,24 @@ class sim_0:
     rho = lambda prel, k: (np.sqrt(prel.T@prel)**(d)/r**(d-1))
     rho_dot = lambda prel, vrel, k: (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
                                        * prel.T@vrel/np.sqrt(prel.T@prel))
-
+    
+    # alfa = 1
+    # mu = 5
+    # sigm = lambda x: 1/(1 + np.exp(alfa*(x - mu)))
+    # rho = lambda prel, k: (np.sqrt(prel.T@prel))**(d)/r**(d-1) * sigm(np.sqrt(prel.T@prel))
+    # rho_dot = lambda prel, vrel, k: ( (d * np.sqrt(prel.T@prel)**(d-1)/r**(d - 1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))
+    #                                      + (np.sqrt(prel.T@prel))**(d)/r**(d-1) \
+    #                                      * sigm(np.sqrt(prel.T@prel))*(1-sigm(np.sqrt(prel.T@prel))) \
+    #                                      * (-alfa) ) \
+    #                                      * prel.T@vrel/np.sqrt(prel.T@prel))
+    
     # -- Initial state --
 
     # Initial states of the robots
     n_agents = 2
-    p0 = np.array([[0, -11], [0, 11]])
-    v0 =  np.array([[7,2]]).T
+    p0 = np.array([[0, -11], [-5, 11]])
+    v0 =  np.array([[7, 1]]).T
     phi0 = np.pi - np.array([0, -np.pi])
 
     # Initial state vector
@@ -91,7 +102,7 @@ class sim_0:
     self.gvf_traj.vector_field(XYoff, area, s, ke)
 
     # Title of the plots
-    self.title = r"$N$ = {0:d}, $r$ = {1:.1f}, $\kappa$ = {2:.2f} $h^3$".format(self.sim.N, self.r, gamma)
+    self.title = r"$N$ = {0:d}, $r$ = {1:.1f}, $\kappa$ = {2:.4f} $h^3$".format(self.sim.N, self.r, gamma)
     self.title = self.title + r", $k_e$ = {0:.1f}, $k_n$ = {1:.1f}".format(ke, kn)
     self.title = self.title + r", $d$ = {0:.2f}".format(d)
 
@@ -135,7 +146,7 @@ class sim_0:
   Function to generate the summary graphical plot of the whole simulation
   """
   def plot_summary(self, output_folder, res=1920):
-    t_list = np.array([0, 16, 25]) * 1000
+    t_list = np.array([5, 7.5, 10]) * 1000
 
     # -- Extract data fields from data dictonary --
     xdata    = self.data["pf"][:,:,0]
@@ -245,6 +256,12 @@ class sim_0:
     prel_ax.axvline(0,  c="black", ls="-", lw=1.2, zorder=0, alpha=1)
     lgh_ax.axvline(0, c="black", ls="-", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axvline(0, c="black", ls="-", lw=1.2, zorder=0, alpha=1)
+
+    # t lines
+    for t in t_list:
+      prel_ax.axvline(t/1000,  c="black", ls="--", lw=1, zorder=0, alpha=1)
+      lgh_ax.axvline(t/1000,  c="black", ls="--", lw=1, zorder=0, alpha=1)
+      wdata_ax.axvline(t/1000,  c="black", ls="--", lw=1, zorder=0, alpha=1)
 
     # Plotting data
     for n in range(self.sim.N):
