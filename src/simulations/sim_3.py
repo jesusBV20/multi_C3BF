@@ -191,7 +191,6 @@ class sim_3:
     omega    = self.data["omega"]
     lgh    = self.data["lgh"]
     prelvi = self.data["prelvi"]
-    #vjevi = self.data["vjevi"]
     
     # -- Plotting the summary --
     # Figure and grid init
@@ -206,7 +205,6 @@ class sim_3:
     lgh_ax = fig.add_subplot(grid_data[1, 0])
     wdata_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
     prelvi_ax = fig.add_subplot(grid_data[1, 1])
-    #vjevi_ax = fig.add_subplot(grid_data[1, 1])
     
     # Axis formatting
     main_ax.set_xlim(PX_LIMS)
@@ -222,7 +220,6 @@ class sim_3:
     fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", r"$t$ [T]", title="b)", xlim=x_lims)
     fmt_data_axis(wdata_ax, r"$\omega$ [rad/T]", title="c)", ylim=WDATA_LIMS, xlim=x_lims)
     fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", title="d)", ylim=[-1.1,1.1], xlim=x_lims)
-    #fmt_data_axis(vjevi_ax, r"$\hat v_j^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1], xlim=x_lims)
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, main_ax)
@@ -320,11 +317,9 @@ class sim_3:
       else:
         self.lines_plt[n].set_data(xdata[0:i,n], ydata[0:i,n])
 
-    self.pline.set_xdata(i*self.dt/1000)
-    self.lline.set_xdata(i*self.dt/1000)
-    self.wline.set_xdata(i*self.dt/1000)
+    for data_line in self.data_lines:
+      data_line.set_xdata(i*self.dt/1000)
 
-  
   """\
   Funtion to generate the full animation of the simulation
   """
@@ -346,29 +341,39 @@ class sim_3:
     preldata = self.data["prelnorm"]
     omega    = self.data["omega"]
     lgh    = self.data["lgh"]
+    prelvi = self.data["prelvi"]
     
     # -- Generating the animation --
     # Figure and grid init
-    figsize = (16,9)
+    figsize = FIGSIZE
 
     fig = plt.figure(figsize=figsize, dpi=res/figsize[0])
-    grid = plt.GridSpec(3, 5, hspace=0.1, wspace=0.4)
+    grid_outer = plt.GridSpec(1, 2, hspace=0, wspace=0.1)
 
-    self.anim_axis  = fig.add_subplot(grid[:, 0:3])
-    prel_ax  = fig.add_subplot(grid[0, 3:5], xticklabels=[])
-    lgh_ax = fig.add_subplot(grid[1, 3:5], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid[2, 3:5])
+    grid_main = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec = grid_outer[0])
+    grid_data = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec = grid_outer[1], wspace = .5)
+
+    anim_axis = fig.add_subplot(grid_main[0,0])
+    prel_ax = fig.add_subplot(grid_data[0, 0], xticklabels=[])
+    lgh_ax = fig.add_subplot(grid_data[1, 0])
+    wdata_ax = fig.add_subplot(grid_data[0, 1], xticklabels=[])
+    prelvi_ax = fig.add_subplot(grid_data[1, 1])
 
     # Axis formatting
-    self.anim_axis.set_xlim(P_LIMS)
-    self.anim_axis.set_ylim(P_LIMS)
-    self.anim_axis.set_ylabel(r"$p_y$ (L)")  
-    self.anim_axis.set_xlabel(r"$p_x$ (L)")
-    self.anim_axis.grid(True)
-
-    fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]", ylim=PDATA_LIMS)
-    fmt_data_axis(lgh_ax, ylabel = r"$L_g h^i(q_{ij})$")
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
+    anim_axis.set_xlim(PX_LIMS)
+    anim_axis.set_ylim(PY_LIMS)
+    anim_axis.set_ylabel(r"$p_y$ [L]")  
+    anim_axis.set_xlabel(r"$p_x$ [L]")
+    anim_axis.set_aspect("equal")
+    anim_axis.grid(True)
+    self.anim_axis = anim_axis
+    
+    x_delta = self.tf/1000
+    x_lims = [0 - x_delta*0.06, self.tf/1000 + x_delta*0.06]
+    fmt_data_axis(prel_ax,  r"$||p_{ij}||$ [L]", title="a)", ylim=PDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(lgh_ax, r"$L_gh^i(q_{ij})$", r"$t$ [T]", title="b)", xlim=x_lims)
+    fmt_data_axis(wdata_ax, r"$\omega$ [rad/T]", title="c)", ylim=WDATA_LIMS, xlim=x_lims)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", title="d)", ylim=[-1.1,1.1], xlim=x_lims)
 
     # -- Main axis plotting
     self.gvf_traj.draw(fig, self.anim_axis)
@@ -377,29 +382,28 @@ class sim_3:
     self.icons_plt = []
     self.icons_col_plt = []
 
-    for n in range(self.sim.N):
-      icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_RBT)
-
     # Draw unicycle icons
     for n in range(self.sim.N):
       
       if n not in self.obs_list: # Agent icons
-        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_RBT, size=1)
-        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=COLOR_RBT, ls="-", lw=0.8)
+        color = COLOR_RBT
+        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], color, size=1)
+        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=color, ls="-", lw=0.8)
 
         self.anim_axis.add_patch(icon)
         self.lines_plt.append(line)
         self.icons_plt.append(icon)
 
       else: # Obstacle icons
-        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], COLOR_OBS, size=1)
-        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=COLOR_OBS, ls="-", lw=0.8)
+        color = COLOR_OBS
+        icon = unicycle_patch([xdata[0,n], ydata[0,n]], phidata[0,n], color, size=1)
+        line, = self.anim_axis.plot(xdata[:,n], ydata[:,n], c=color, ls="-", lw=0.8)
 
         self.anim_axis.add_patch(icon)
         self.lines_plt.append(line)
         self.icons_plt.append(icon)
 
-    txt_title = self.anim_axis.set_title(self.title)
+    self.anim_axis.set_title(self.title, fontdict={'fontsize': 10})
 
     # -- Main axis plotting
     time_vec = np.linspace(0, self.tf/1000, int(self.tf/self.dt))
@@ -407,6 +411,8 @@ class sim_3:
     # Zero lines
     prel_ax.axhline(self.r,  c="black", ls="--", lw=1.2, zorder=0, alpha=1)
     wdata_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
+    prel_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
+    prelvi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.5)
 
     prel_ax.axhline(0,0,  c="blue", ls="-", lw=1.2, label=r"$||p_{ij}^b||$")
     prel_ax.axhline(0,0,  c="red", ls="-", lw=1.2, label=r"$||p_{ij}^r||$")
@@ -415,30 +421,35 @@ class sim_3:
     # Plotting data
     for n in range(self.sim.N):
       if n in self.obs_list:
-        wdata_ax.plot(time_vec, omega[:,n], c=COLOR_OBS, lw=1.2, alpha=0.2)
+        wdata_ax.plot(time_vec[0:], omega[0:,n], c=COLOR_OBS, lw=1.2, alpha=0.2)
       else:
-        wdata_ax.plot(time_vec, omega[:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
+        wdata_ax.plot(time_vec[0:], omega[0:,n], c=COLOR_RBT, lw=1.2, alpha=0.2)
 
       for k in range(self.sim.N):
         if k > n:
           if n in self.obs_list:
             if k in self.obs_list:
-              prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=2)
-              if self.v[n] > self.v[k]:
-                lgh_ax.plot(time_vec, lgh[:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.1, zorder=2)
+              prel_ax.plot(time_vec[0:], preldata[0:,k,n], c=COLOR_OBS, lw=1.2, alpha=0.2, zorder=2)
             else:
-              prel_ax.plot(time_vec, preldata[:,k,n], c="k", lw=1.2, alpha=0.09, zorder=3)
+              prel_ax.plot(time_vec[0:], preldata[0:,k,n], c="k", lw=1.2, alpha=0.09, zorder=3)
           
           else:
-            prel_ax.plot(time_vec, preldata[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
-            if self.v[n] > self.v[k]:
-              lgh_ax.plot(time_vec, lgh[:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.1, zorder=2)
+            prel_ax.plot(time_vec[0:], preldata[0:,k,n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
 
-    self.pline = prel_ax.axvline(0, c="black", ls="--", lw=1.2)
-    self.lline = lgh_ax.axvline(0, c="black", ls="--", lw=1.2)
-    self.wline = wdata_ax.axvline(0, c="black", ls="--", lw=1.2)
+      n_obs = self.sim_obs.N
+      for k in range(self.sim.N - n_obs):
+        if k > n:
+          if self.v[n+n_obs] > self.v[k+n_obs]:
+            lgh_ax.plot(time_vec[0:], lgh[0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.2, zorder=2)
+            prelvi_ax.plot(time_vec[0:], prelvi[0:,n_obs+k,n_obs+n], c=COLOR_RBT, lw=1.2, alpha=0.05, zorder=2)
+  
+    self.data_lines = []
+    self.data_lines.append(prel_ax.axvline(0, c="black", ls="--", lw=1.2))
+    self.data_lines.append(lgh_ax.axvline(0, c="black", ls="--", lw=1.2))
+    self.data_lines.append(wdata_ax.axvline(0, c="black", ls="--", lw=1.2))
+    self.data_lines.append(prelvi_ax.axvline(0, c="black", ls="--", lw=1.2))
 
-    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=10)
+    prel_ax.legend(loc="upper left", ncol=3, fancybox=True, framealpha=1, fontsize=5.4)
 
     # -- Animation --
     # Init of the animation class
