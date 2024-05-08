@@ -47,12 +47,12 @@ COLOR_LINE_PLT = [color_palette()[0], "darkgreen"]
 ###########
 """
 class sim_0:
-  def __init__(self, n_agents=12, tf=100, dt=1/60, a=10, b=10, area=50**2,
+  def __init__(self, n_agents=12, tf=100, dt=1/60, a=15, b=10, area=50**2,
                      s=1, ke=1, kn=2, r=2, gamma=1, d=0.83, t_cbf=0):
     self.dt = dt * 1000  # in miliseconds
     self.tf = tf * 1000  # in miliseconds
     self.data = {"pf": None, "phif": None, "prelnorm": None, 
-                 "omega": None, "lgh": None, "rho_val": None}
+                 "omega": None, "lgh": None, "rho_val": None, "prelvi": None}
 
     # Trayectory parameters and generation
     self.s = s
@@ -119,6 +119,7 @@ class sim_0:
     omega    = np.empty([its,self.sim.N])
     lgh      = np.empty([its,self.sim.N,self.sim.N])
     rho_val  = np.empty([its,self.sim.N,self.sim.N])
+    prelvi   = np.empty([its,self.sim.N,self.sim.N])
 
     for i in tqdm(range(its)):
 
@@ -129,6 +130,7 @@ class sim_0:
       preldata[i,:,:,:] = self.sim.p_rel
       lgh [i,:,:]       = self.sim.lgh_all
       rho_val[i,:,:]    = self.sim.rho_val
+      prelvi[i,:,:] = self.sim.prelvi
 
       # Robots simulator euler step integration
       self.sim.int_euler()
@@ -140,6 +142,7 @@ class sim_0:
     self.data["omega"] = omega
     self.data["lgh"] = lgh
     self.data["rho_val"] = rho_val
+    self.data["prelvi"] = prelvi
 
 
   """\
@@ -364,8 +367,9 @@ class sim_0:
     phidata  = self.data["phif"]
     preldata = self.data["prelnorm"]
     omega    = self.data["omega"]
-    lgh    = self.data["lgh"]
-    rho_val    = self.data["rho_val"]
+    lgh      = self.data["lgh"]
+    rho_val  = self.data["rho_val"]
+    prelvi   = self.data["prelvi"]
     
     # -- Generating the animation --
     # Figure and grid init
@@ -377,7 +381,7 @@ class sim_0:
     self.anim_axis  = fig.add_subplot(grid[:, 0:3])
     prel_ax  = fig.add_subplot(grid[0, 3:5], xticklabels=[])
     lgh_ax = fig.add_subplot(grid[1, 3:5], xticklabels=[])
-    wdata_ax = fig.add_subplot(grid[2, 3:5])
+    prelvi_ax = fig.add_subplot(grid[2, 3:5])
 
     # Axis formatting
     self.anim_axis.set_xlim(PX_LIMS)
@@ -388,7 +392,7 @@ class sim_0:
 
     fmt_data_axis(prel_ax, ylabel = r"$||p_{ij}||$ [L]")
     fmt_data_axis(lgh_ax, r"$L_gh^i$", ylim=LDATA_LIMS)
-    fmt_data_axis(wdata_ax, r"$\omega [rad/T]$", r"$t$ (T)", ylim=WDATA_LIMS)
+    fmt_data_axis(prelvi_ax, r"$\hat p_{ij}^\top E \hat v_i$", r"$t$ (T)", ylim=[-1.1,1.1])
 
     # -- Main axis
     self.gvf_traj.draw(fig, self.anim_axis, width=0.0024, alpha=0.1, lw=2)
@@ -448,16 +452,16 @@ class sim_0:
     # Zero lines
     prel_ax.axhline(self.r,  c="black", ls="--", lw=1.2, zorder=0, alpha=1)
     lgh_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.8)
-    wdata_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.8)
+    prelvi_ax.axhline(0, c="black", ls="--", lw=1.2, zorder=0, alpha=0.8)
 
     prel_ax.axvline(0,  c="black", ls="-", lw=1.2, zorder=0, alpha=1)
     lgh_ax.axvline(0, c="black", ls="-", lw=1.2, zorder=0, alpha=1)
-    wdata_ax.axvline(0, c="black", ls="-", lw=1.2, zorder=0, alpha=1)
+    prelvi_ax.axvline(0, c="black", ls="-", lw=1.2, zorder=0, alpha=1)
 
     # Plotting data
-    for n in range(self.sim.N):
-      wdata_ax.plot(time_vec[l0:], omega[l0:,n], c=COLOR_LINE_PLT[n], lw=1.2, alpha=1)
+    prelvi_ax.plot(time_vec[l0:], prelvi[l0:,1,0], c=COLOR_RBT, lw=1.2, alpha=1)
 
+    for n in range(self.sim.N):
       for k in range(self.sim.N):
         if k > n:
           prel_ax.plot(time_vec[l0:], preldata[l0:,k,n], c=COLOR_RBT, lw=1.2, alpha=1, zorder=2)
@@ -466,7 +470,7 @@ class sim_0:
 
     self.pline = prel_ax.axvline(0, c="black", ls="--", lw=1.2)
     self.lline = lgh_ax.axvline(0, c="black", ls="--", lw=1.2)
-    self.wline = wdata_ax.axvline(0, c="black", ls="--", lw=1.2)
+    self.wline = prelvi_ax.axvline(0, c="black", ls="--", lw=1.2)
 
     # Legend settings
     self.red_cone.set_label("Col. cone")
