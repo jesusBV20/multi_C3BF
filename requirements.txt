@@ -1,0 +1,3 @@
+## Required python packages ##
+git+https://github.com/Swarm-Systems-Lab/ssl_simulator.git@v0.0.1
+seaborn>=0.12.0,<0.13
